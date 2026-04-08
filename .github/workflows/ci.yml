@@ -30,7 +30,6 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 安装 Android SDK（setup-android 自动设置 ANDROID_HOME/PATH）
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -41,15 +40,18 @@ jobs:
       - name: Verify SDK
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "PATH includes cmdline-tools: $(echo $PATH | grep -o 'cmdline-tools' | head -1)"
-          sdkmanager --list_installed
+          sdkmanager --list_installed | head -20
+
+      # 先诊断依赖解析
+      - name: Diagnose dependencies
+        run: gradle dependencies --no-daemon 2>&1 | tail -50
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
         continue-on-error: true
 
       - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace 2>&1
 
       - name: Upload Debug APK as artifact
         uses: actions/upload-artifact@v4
