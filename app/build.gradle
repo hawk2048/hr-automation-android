@@ -12,9 +12,8 @@ android {
         applicationId "com.hiringai.mobile"
         minSdk 26
         targetSdk 34
-        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
-        versionName = System.getenv("VERSION_NAME") ?: "1.0"
-
+        versionCode Integer.valueOf(System.getenv("VERSION_CODE") ?: "1")
+        versionName System.getenv("VERSION_NAME") ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -36,13 +35,10 @@ android {
         }
         release {
             minifyEnabled true
-            shrinkResources true
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (System.getenv("KEYSTORE_FILE") != null) {
                 signingConfig signingConfigs.release
-            } else {
-                // CI 中未配置 keystore 时使用 debug 签名（方便下载测试）
-                signingConfig signingConfigs.debug
             }
         }
     }
@@ -58,15 +54,6 @@ android {
 
     buildFeatures {
         viewBinding true
-    }
-
-    // APK 输出命名
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            def vName = variant.versionName
-            def buildType = variant.buildType.name
-            outputFileName = "HRAutomation-${buildType}-v${vName}.apk"
-        }
     }
 }
 
@@ -84,7 +71,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
 
-    // Room Database (SQLite)
+    // Room Database
     implementation 'androidx.room:room-runtime:2.6.1'
     kapt 'androidx.room:room-compiler:2.6.1'
 
