@@ -11,16 +11,38 @@ android {
         applicationId "com.hiringai.mobile"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        versionName = System.getenv("VERSION_NAME") ?: "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildTypes {
+    signingConfigs {
         release {
-            minifyEnabled false
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                storeFile file(System.getenv("KEYSTORE_FILE"))
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                signingConfig signingConfigs.release
+            } else {
+                // CI 中未配置 keystore 时使用 debug 签名（方便下载测试）
+                signingConfig signingConfigs.debug
+            }
         }
     }
 
@@ -35,6 +57,15 @@ android {
 
     buildFeatures {
         viewBinding true
+    }
+
+    // APK 输出命名
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def vName = variant.versionName
+            def buildType = variant.buildType.name
+            outputFileName = "HRAutomation-${buildType}-v${vName}.apk"
+        }
     }
 }
 
