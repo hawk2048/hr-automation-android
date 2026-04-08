@@ -158,5 +158,5 @@ class LocalLLMService(private val context: Context) {
     }
     
     private fun String.toRequestBody(): okhttp3.RequestBody =
-        okhttp3.RequestBody.create(this, null as okhttp3.MediaType?)
+        okhttp3.RequestBody.create(null as okhttp3.MediaType?, this)
 }
