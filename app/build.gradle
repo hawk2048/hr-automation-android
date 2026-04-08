@@ -1,17 +1,17 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
 }
 
 android {
     namespace 'com.hiringai.mobile'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.hiringai.mobile"
         minSdk 26
-        targetSdk 34
+        targetSdk 35
         versionCode Integer.valueOf(System.getenv("VERSION_CODE") ?: "1")
         versionName System.getenv("VERSION_NAME") ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -61,11 +61,6 @@ android {
     }
 }
 
-// 确保 kapt 能正确处理 Room
-kapt {
-    correctErrorTypes = true
-}
-
 dependencies {
     // AndroidX Core
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -83,11 +78,11 @@ dependencies {
     // Room Database
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
-    kapt 'androidx.room:room-compiler:2.6.1'
+    ksp 'androidx.room:room-compiler:2.6.1'
 
     // Networking
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.11.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 
     // Coroutines
