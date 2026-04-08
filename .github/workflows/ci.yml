@@ -30,21 +30,30 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 安装 Android SDK（setup-java 不包含 Android SDK）
+      # 安装 Android SDK（android-actions/setup-android@v2 稳定版）
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        id: android-sdk
+        uses: android-actions/setup-android@v2
 
-      # 安装所需 Android SDK 组件（compileSdk 34）
+      # 安装所需 SDK 组件，显式设置 ANDROID_HOME
       - name: Install Android SDK components
+        env:
+          ANDROID_HOME: ${{ steps.android-sdk.outputs.sdk-path }}
+          ANDROID_SDK_ROOT: ${{ steps.android-sdk.outputs.sdk-path }}
         run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
         continue-on-error: true
 
       - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: ${{ steps.android-sdk.outputs.sdk-path }}
+          ANDROID_SDK_ROOT: ${{ steps.android-sdk.outputs.sdk-path }}
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK as artifact
         uses: actions/upload-artifact@v4

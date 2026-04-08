@@ -31,11 +31,16 @@ jobs:
 
       # 3. 安装 Android SDK
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        id: android-sdk
+        uses: android-actions/setup-android@v2
 
       - name: Install Android SDK components
+        env:
+          ANDROID_HOME: ${{ steps.android-sdk.outputs.sdk-path }}
+          ANDROID_SDK_ROOT: ${{ steps.android-sdk.outputs.sdk-path }}
         run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       # 4. 从 tag 提取版本号
       - name: Extract version from tag
@@ -53,6 +58,9 @@ jobs:
       - name: Decode Keystore
         id: keystore
         if: secrets.KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_HOME: ${{ steps.android-sdk.outputs.sdk-path }}
+          ANDROID_SDK_ROOT: ${{ steps.android-sdk.outputs.sdk-path }}
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/release.jks
           echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
@@ -62,10 +70,12 @@ jobs:
 
       # 6. 构建 Release APK
       - name: Build Release APK
-        run: gradle assembleRelease --no-daemon --stacktrace
         env:
+          ANDROID_HOME: ${{ steps.android-sdk.outputs.sdk-path }}
+          ANDROID_SDK_ROOT: ${{ steps.android-sdk.outputs.sdk-path }}
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       # 7. 查找 APK
       - name: Find APK
@@ -80,7 +90,6 @@ jobs:
 
       # 8. 生成 Changelog
       - name: Generate Changelog
-        id: changelog
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
