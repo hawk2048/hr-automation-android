@@ -7,7 +7,8 @@ import java.io.File
 
 /**
  * 本地 LLM 推理服务
- * 支持 llama.cpp 兼容的模型
+ * 支持 llama.cpp 兼容的模型（设备端 JNI 推理，尚未实现）
+ * 远程 Ollama 方案通过 HTTP 调用，需在电脑/服务器上运行 Ollama
  */
 class LocalLLMService(private val context: Context) {
     
@@ -118,7 +119,8 @@ class LocalLLMService(private val context: Context) {
     }
     
     /**
-     * 调用远程 Ollama 服务器（备选方案）
+     * 调用远程 Ollama 服务器（当前唯一可用的推理方案）
+     * Ollama 不支持 Android，需在电脑或服务器上运行
      */
     suspend fun generateViaOllama(
         ollamaUrl: String,

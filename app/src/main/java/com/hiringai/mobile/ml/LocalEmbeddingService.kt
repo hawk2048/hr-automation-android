@@ -7,7 +7,8 @@ import java.io.File
 
 /**
  * 本地 Embedding 服务
- * 使用 ONNX Runtime 运行 sentence-transformers 模型
+ * 使用 ONNX Runtime 运行 sentence-transformers 模型（尚未实现）
+ * 当前 encode() 返回模拟数据
  */
 class LocalEmbeddingService(private val context: Context) {
     
