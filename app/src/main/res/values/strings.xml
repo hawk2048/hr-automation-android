@@ -8,16 +8,40 @@
     <string name="empty_list">暂无数据</string>
     <string name="btn_run_match">运行匹配</string>
     <string name="btn_screen">初筛</string>
-    <string name="settings_llm_url">LLM 服务器地址</string>
-    <string name="settings_download_model">下载模型</string>
-    <string name="settings_about">关于</string>
-    <string name="settings_local_model_title">本地模型设置</string>
-    <string name="settings_default_llm_url">http://localhost:11434</string>
-    <string name="settings_model_not_downloaded">模型未下载</string>
-    <string name="settings_about_text">招聘AI助手 v1.0\n本地 LLM + Embedding 智能招聘系统</string>
     <string name="content_desc_add">添加</string>
     <string name="job_title_hint">职位名称</string>
     <string name="job_status_active">进行中</string>
     <string name="job_requirements_hint">职位要求描述\u2026</string>
     <string name="candidates_count_format">候选人: %d</string>
+
+    <!-- Settings -->
+    <string name="settings_inference_mode">推理模式</string>
+    <string name="settings_select_mode">选择推理方式</string>
+    <string name="settings_local_llm_title">本地 LLM 模型</string>
+    <string name="settings_embedding_title">Embedding 向量模型</string>
+    <string name="settings_select_model">选择模型</string>
+    <string name="settings_download_model">下载模型</string>
+    <string name="settings_download_embedding">下载 Embedding 模型</string>
+    <string name="settings_model_not_downloaded">模型未下载</string>
+    <string name="settings_llm_downloaded">LLM 模型已下载，点击加载</string>
+    <string name="settings_llm_loaded">LLM 已加载: %s</string>
+    <string name="settings_embedding_downloaded">Embedding 模型已下载，点击加载</string>
+    <string name="settings_embedding_loaded">Embedding 模型已加载</string>
+    <string name="settings_load_models">加载已下载的模型</string>
+    <string name="settings_models_loaded">LLM + Embedding 模型已加载</string>
+    <string name="settings_llm_loaded_only">LLM 模型已加载</string>
+    <string name="settings_embedding_loaded_only">Embedding 模型已加载</string>
+    <string name="settings_no_model_loaded">模型加载失败</string>
+    <string name="settings_download_failed">下载失败，请检查网络</string>
+    <string name="settings_saved">已保存</string>
+
+    <!-- Ollama -->
+    <string name="settings_ollama_title">Ollama 服务器</string>
+    <string name="settings_ollama_hint">Ollama 需在电脑或服务器上运行，手机通过网络连接</string>
+    <string name="settings_ollama_url">Ollama 服务器地址</string>
+    <string name="settings_save">保存</string>
+
+    <!-- About -->
+    <string name="settings_about">关于</string>
+    <string name="settings_about_text">招聘AI助手 v1.1\n本地 llama.cpp + ONNX Runtime 智能招聘系统\n数据不出设备</string>
 </resources>

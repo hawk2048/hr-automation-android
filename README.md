@@ -23,9 +23,9 @@
 │  AppDatabase (singleton, thread-safe)        │
 ├─────────────────────────────────────────────┤
 │                 ML Layer                     │
-│  LocalLLMService    → 远程 Ollama（已实现）   │
-│                     → llama.cpp JNI（未实现）  │
-│  LocalEmbeddingService → ONNX Runtime（未实现）│
+│  LocalLLMService    → llama.cpp JNI（已实现）  │
+│                     → 远程 Ollama（已实现）    │
+│  LocalEmbeddingService → ONNX Runtime（已实现）│
 │  cosineSimilarity   → 向量匹配计算           │
 ├─────────────────────────────────────────────┤
 │              Networking                      │
@@ -45,10 +45,10 @@
 
 | 方案 | 模型 | 内存需求 | 状态 | 说明 |
 |------|------|----------|------|------|
-| 远程 Ollama | 任意 | 不限 | 可用 | 电脑/服务器运行 Ollama，手机通过 HTTP 调用 |
-| 本地 llama.cpp | Qwen2.5-0.5B-Q4 | 2 GB | 未实现 | 需集成 llama.cpp JNI |
-| 本地 llama.cpp | Phi-3-Mini-Q4 | 4 GB | 未实现 | 需集成 llama.cpp JNI |
-| 本地 ONNX | all-MiniLM-L6-v2 | <1 GB | 未实现 | 需集成 ONNX Runtime |
+| 本地 llama.cpp | Qwen2.5-0.5B-Q4_0 | 2 GB | 已实现 | llama-kotlin-android JNI，设备端推理 |
+| 本地 llama.cpp | TinyLlama-1.1B-Q4_K_M | 3 GB | 已实现 | llama-kotlin-android JNI，更强推理能力 |
+| 本地 ONNX | all-MiniLM-L6-v2 | <1 GB | 已实现 | ONNX Runtime + NNAPI 加速，384 维向量 |
+| 远程 Ollama | 任意 | 不限 | 已实现 | 电脑/服务器运行 Ollama，手机通过 HTTP 调用 |
 
 ## 技术栈
 
@@ -149,28 +149,20 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## ML 模型配置
 
-### 方案一：远程 Ollama 服务器（推荐，当前唯一可用）
+### 方案一：设备端推理（推荐，隐私优先）
 
-Ollama 是桌面/服务端程序，不支持在 Android 设备上运行。需要在一台电脑或服务器上启动 Ollama，然后手机通过网络连接。
+应用内直接运行 GGUF 模型，数据不出设备：
 
-1. 在**电脑或服务器**上安装并启动 Ollama：`ollama serve`
-2. 拉取模型：`ollama pull qwen2.5:0.5b`
-3. 确保 Ollama 监听地址可被手机访问（默认 `0.0.0.0:11434`）
-4. 在 App 设置页面填写 Ollama 地址：
-   - **模拟器**：`http://10.0.2.2:11434`（访问宿主机）
-   - **真机**：`http://<电脑局域网IP>:11434`（如 `http://192.168.1.100:11434`）
-   - **远程服务器**：`http://<服务器IP>:11434`
+1. 打开 App 设置页面
+2. 选择推理模式：设备端推理 (llama.cpp)
+3. 选择 LLM 模型并下载（Qwen2.5-0.5B 约 400MB）
+4. 可选：下载 Embedding 模型（all-MiniLM-L6-v2 约 90MB）
+5. 点击"加载已下载的模型"
+6. 模型文件存储路径：`app/files/models/` (LLM)、`app/files/embedding/` (Embedding)
 
-> 注意：Ollama 默认只监听 127.0.0.1，如需局域网访问需设置环境变量 `OLLAMA_HOST=0.0.0.0`。
+LLM 推理使用 [llama-kotlin-android](https://github.com/CodeShipping/llama-kotlin-android) (llama.cpp JNI)，Embedding 使用 [ONNX Runtime Android](https://onnxruntime.ai/docs/mobile/) + NNAPI 硬件加速。
 
-### 方案二：设备端本地推理（尚未实现）
-
-设备端推理需要集成 llama.cpp Android 库通过 JNI 加载 GGUF 模型，代码框架已在 `LocalLLMService.kt` 中预留，但核心推理逻辑尚未实现。Embedding 向量计算同理，需要集成 ONNX Runtime Android 库。
-
-如果需要实现本地推理，推荐方案：
-- **LLM**：集成 [llama.cpp Android](https://github.com/ggerganov/llama.cpp/tree/master/android) 或 [MLC-LLM Android](https://github.com/mlc-ai/mlc-llm)，可跑 Qwen2.5-0.5B 等小模型
-- **Embedding**：集成 [ONNX Runtime Mobile](https://onnxruntime.ai/docs/mobile/)，可跑 all-MiniLM-L6-v2
-- 两者均支持离线运行，数据不出设备
+### 方案二：远程 Ollama 服务器
 
 ## 权限说明
 
