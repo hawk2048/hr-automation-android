@@ -32,6 +32,7 @@ android {
         debug {
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
+            crunchPngs false
         }
         release {
             minifyEnabled true
@@ -55,6 +56,11 @@ android {
     buildFeatures {
         viewBinding true
     }
+}
+
+// 确保 kapt 能正确处理 Room
+kapt {
+    correctErrorTypes = true
 }
 
 dependencies {
