@@ -25,25 +25,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # gradle/gradle-build-action 会自动根据 gradle-wrapper.properties 安装 Gradle
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.4
 
-      # 安装 Android SDK 命令行工具
-      - name: Setup Android SDK command-line tools
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      # 手动安装所需的 SDK 组件（setup-android 不支持 packages 参数）
-      - name: Install Android SDK components
+      - name: Install SDK components
         run: |
-          export ANDROID_HOME="$HOME/android-sdk"
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
-          echo "Installing SDK components..."
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
-          echo "=== Installed SDK components ==="
-          sdkmanager --list_installed | grep -E "platforms;android|build-tools"
 
       - name: Extract version from tag
         id: version
@@ -55,16 +48,6 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION (code: $VERSION_CODE)"
-
-      - name: Decode Keystore
-        id: keystore
-        if: secrets.KEYSTORE_BASE64 != ''
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/release.jks
-          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Build Release APK
         env:
@@ -88,7 +71,7 @@ jobs:
           if [ -n "$PREV_TAG" ]; then
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD)
           else
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 HEAD)
           fi
           echo "$CHANGELOG" > /tmp/changelog.txt
 
