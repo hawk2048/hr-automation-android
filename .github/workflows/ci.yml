@@ -29,16 +29,18 @@ jobs:
         with:
           gradle-version: 8.4
           java-version: '17'
+          cache-disabled: true  # 禁用缓存，避免 400 错误导致构建失败
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
-        continue-on-error: true  # 项目暂无测试用例，允许跳过
+        continue-on-error: true
 
       - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK as artifact
         uses: actions/upload-artifact@v4
+        if: always()  # 即使构建失败也上传日志供调试
         with:
           name: debug-apk-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
