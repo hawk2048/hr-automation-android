@@ -142,7 +142,7 @@ class LocalLLMService(private val context: Context) {
             val client = okhttp3.OkHttpClient()
             val request = okhttp3.Request.Builder()
                 .url("$ollamaUrl/api/generate")
-                .post(requestBody.toRequestBody("application/json".toMediaType()))
+                .post(requestBody.toRequestBody())
                 .build()
             
             val response = client.newCall(request).execute()
@@ -157,7 +157,6 @@ class LocalLLMService(private val context: Context) {
         }
     }
     
-    private fun String.toMediaType() = okhttp3.MediaType.parse(this)
-    private fun String.toRequestBody(mediaType: okhttp3.MediaType) = 
-        okhttp3.RequestBody.create(mediaType, this)
+    private fun String.toRequestBody(): okhttp3.RequestBody =
+        okhttp3.RequestBody.create(this, null as okhttp3.MediaType?)
 }
