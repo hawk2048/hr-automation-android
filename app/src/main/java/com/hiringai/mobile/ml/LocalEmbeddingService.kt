@@ -10,7 +10,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.nio.LongBuffer
 
 /**
  * 本地 Embedding 服务
@@ -181,20 +184,33 @@ class LocalEmbeddingService(private val context: Context) {
 
             val seqLen = inputIds.size
 
+            // Create direct buffers for ONNX Runtime (requires native-order direct buffers)
+            val inputIdsBuf = ByteBuffer.allocateDirect(seqLen * 8).order(ByteOrder.nativeOrder()).asLongBuffer()
+            inputIdsBuf.put(inputIds)
+            inputIdsBuf.rewind()
+
+            val attentionMaskBuf = ByteBuffer.allocateDirect(seqLen * 8).order(ByteOrder.nativeOrder()).asLongBuffer()
+            attentionMaskBuf.put(attentionMask)
+            attentionMaskBuf.rewind()
+
+            val tokenTypeIdsBuf = ByteBuffer.allocateDirect(seqLen * 8).order(ByteOrder.nativeOrder()).asLongBuffer()
+            tokenTypeIdsBuf.put(tokenTypeIds)
+            tokenTypeIdsBuf.rewind()
+
             // Create ONNX tensors
             val inputIdsTensor = OnnxTensor.createTensor(
                 env!!,
-                LongBuffer.wrap(inputIds),
+                inputIdsBuf,
                 longArrayOf(1, seqLen.toLong())
             )
             val attentionMaskTensor = OnnxTensor.createTensor(
                 env!!,
-                LongBuffer.wrap(attentionMask),
+                attentionMaskBuf,
                 longArrayOf(1, seqLen.toLong())
             )
             val tokenTypeIdsTensor = OnnxTensor.createTensor(
                 env!!,
-                LongBuffer.wrap(tokenTypeIds),
+                tokenTypeIdsBuf,
                 longArrayOf(1, seqLen.toLong())
             )
 
