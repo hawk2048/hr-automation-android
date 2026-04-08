@@ -30,13 +30,21 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 使用 nhmcalmont/setup-android-sdk 安装完整 Android SDK（含平台和构建工具）
-      - name: Setup Android SDK
-        uses: nhmcalmont/setup-android-sdk@v1
-        with:
-          api-level: '34'
-          build-tools: '34.0.0'
-          platforms: 'android-34'
+      # 安装 Android SDK 命令行工具
+      - name: Setup Android SDK command-line tools
+        uses: android-actions/setup-android@v2
+
+      # 手动安装所需的 SDK 组件（setup-android 不支持 packages 参数）
+      - name: Install Android SDK components
+        run: |
+          export ANDROID_HOME="$HOME/android-sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+          echo "Installing SDK components..."
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          echo "=== Installed SDK components ==="
+          sdkmanager --list_installed | grep -E "platforms;android|build-tools"
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
