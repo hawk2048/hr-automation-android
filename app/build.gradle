@@ -40,6 +40,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (System.getenv("KEYSTORE_FILE") != null) {
                 signingConfig signingConfigs.release
+            } else {
+                // Fallback to debug signing for CI builds without keystore secrets
+                signingConfig signingConfigs.debug
             }
         }
     }
