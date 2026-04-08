@@ -1,6 +1,5 @@
 name: Android Release
 
-# 触发条件：推送 v*.*.* 格式的 tag（如 v1.0.0、v1.2.3）
 on:
   push:
     tags:
@@ -15,13 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 检出代码
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. 设置 JDK 17
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
@@ -29,15 +26,14 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 3. 安装 Android SDK（自动设置 ANDROID_HOME/PATH）
+      # 使用 nhmcalmont/setup-android-sdk 安装完整 Android SDK
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: nhmcalmont/setup-android-sdk@v1
         with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
+          api-level: '34'
+          build-tools: '34.0.0'
+          platforms: 'android-34'
 
-      # 4. 从 tag 提取版本号
       - name: Extract version from tag
         id: version
         run: |
@@ -49,7 +45,6 @@ jobs:
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION (code: $VERSION_CODE)"
 
-      # 5. 解码 Keystore（如已配置 Secret）
       - name: Decode Keystore
         id: keystore
         if: secrets.KEYSTORE_BASE64 != ''
@@ -60,14 +55,12 @@ jobs:
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-      # 6. 构建 Release APK
       - name: Build Release APK
         env:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: gradle assembleRelease --no-daemon
 
-      # 7. 查找 APK
       - name: Find APK
         id: apk
         run: |
@@ -78,7 +71,6 @@ jobs:
           echo "Found APK: $APK_PATH"
           ls -lh "$APK_PATH"
 
-      # 8. 生成 Changelog
       - name: Generate Changelog
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -89,7 +81,6 @@ jobs:
           fi
           echo "$CHANGELOG" > /tmp/changelog.txt
 
-      # 9. 创建 GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -104,7 +95,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 10. 打印下载链接
       - name: Print download info
         run: |
           echo "=========================================="

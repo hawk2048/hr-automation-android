@@ -30,12 +30,13 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      # 使用 nhmcalmont/setup-android-sdk 安装完整 Android SDK（含平台和构建工具）
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: nhmcalmont/setup-android-sdk@v1
         with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
+          api-level: '34'
+          build-tools: '34.0.0'
+          platforms: 'android-34'
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
