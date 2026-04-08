@@ -37,21 +37,12 @@ jobs:
             platforms;android-34
             build-tools;34.0.0
 
-      - name: Verify SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --list_installed | head -20
-
-      # 先诊断依赖解析
-      - name: Diagnose dependencies
-        run: gradle dependencies --no-daemon 2>&1 | tail -50
-
       - name: Run Unit Tests
         run: gradle test --no-daemon
         continue-on-error: true
 
       - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace 2>&1
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload Debug APK as artifact
         uses: actions/upload-artifact@v4
