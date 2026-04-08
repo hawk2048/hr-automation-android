@@ -24,7 +24,10 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      # gradle/gradle-build-action 会自动根据 gradle-wrapper.properties 安装 Gradle
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
 
       # 安装 Android SDK 命令行工具
       - name: Setup Android SDK command-line tools
