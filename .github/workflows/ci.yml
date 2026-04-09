@@ -17,6 +17,10 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   build:
     name: Build & Test
@@ -50,13 +54,60 @@ jobs:
         continue-on-error: true
 
       - name: Build Debug APK
+        id: build
         run: |
           set +e
           gradle clean assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build-debug.log
           BUILD_EXIT=${PIPESTATUS[0]}
-          echo "Build exit code: $BUILD_EXIT"
-          cat /tmp/build-debug.log
-          exit $BUILD_EXIT
+          echo "build_exit=$BUILD_EXIT" >> $GITHUB_OUTPUT
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "===== BUILD FAILED ====="
+            cat /tmp/build-debug.log
+            exit $BUILD_EXIT
+          fi
+
+      - name: Report build errors as issue
+        if: failure() && steps.build.outputs.build_exit != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('/tmp/build-debug.log', 'utf8');
+            const lines = log.split('\n');
+            // Extract error lines (Kotlin compiler errors, Gradle failures, etc.)
+            const errorLines = lines.filter(l =>
+              /^e:/.test(l) ||
+              /error:/i.test(l) ||
+              /FAILED/.test(l) ||
+              /Exception:/.test(l) ||
+              /Unresolved reference/.test(l) ||
+              /None of the following/.test(l) ||
+              /Cannot find/.test(l) ||
+              /Task :app:/.test(l)
+            ).slice(0, 100).join('\n');
+
+            // Also get 5 lines of context around each error
+            const contextLines = [];
+            for (let i = 0; i < lines.length; i++) {
+              if (/^e:|FAILED|Unresolved reference|None of the following/.test(lines[i])) {
+                const start = Math.max(0, i - 3);
+                const end = Math.min(lines.length, i + 3);
+                for (let j = start; j < end; j++) {
+                  contextLines.push(lines[j]);
+                }
+                contextLines.push('---');
+              }
+            }
+
+            const body = `## Build Failed on commit ${context.sha.substring(0,7)}\n\n### Error Lines\n\`\`\`\n${errorLines}\n\`\`\`\n\n### Context Around Errors\n\`\`\`\n${contextLines.slice(0, 300).join('\n')}\n\`\`\`\n\nFull log available in [build artifacts](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Build Error: ${context.sha.substring(0,7)}`,
+              body: body,
+              labels: ['bug', 'ci-failure']
+            });
 
       - name: Upload build log as artifact
         uses: actions/upload-artifact@v4
