@@ -47,7 +47,7 @@ jobs:
       - name: Install SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platforms;android-36" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Run Unit Tests
         run: gradle test --no-daemon
@@ -83,8 +83,14 @@ jobs:
               /Unresolved reference/.test(l) ||
               /None of the following/.test(l) ||
               /Cannot find/.test(l) ||
-              /Task :app:/.test(l)
-            ).slice(0, 100).join('\n');
+              /Task :app:/.test(l) ||
+              /Dependency/.test(l) ||
+              /compileSdk/.test(l) ||
+              /compile against/.test(l) ||
+              /issues? were found/.test(l) ||
+              /requires libraries/.test(l) ||
+              /minCompileSdk/.test(l)
+            ).slice(0, 150).join('\n');
 
             // Also get 5 lines of context around each error
             const contextLines = [];
