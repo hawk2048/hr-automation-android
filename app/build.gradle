@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.hiringai.mobile'
-    compileSdk 36
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.hiringai.mobile"
@@ -24,8 +24,9 @@ android {
 
     signingConfigs {
         release {
-            if (System.getenv("KEYSTORE_FILE") != null) {
-                storeFile file(System.getenv("KEYSTORE_FILE"))
+            def keystoreFile = System.getenv("KEYSTORE_FILE")
+            if (keystoreFile != null && file(keystoreFile).exists()) {
+                storeFile file(keystoreFile)
                 storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS")
                 keyPassword System.getenv("KEY_PASSWORD")
@@ -53,10 +54,9 @@ android {
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (System.getenv("KEYSTORE_FILE") != null) {
+            if (System.getenv("KEYSTORE_FILE") != null && file(System.getenv("KEYSTORE_FILE")).exists()) {
                 signingConfig signingConfigs.release
             } else {
-                // Fallback to debug signing for CI builds without keystore secrets
                 signingConfig signingConfigs.debug
             }
         }
