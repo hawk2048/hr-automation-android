@@ -56,12 +56,28 @@ jobs:
         env:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
-        run: gradle clean assembleRelease --no-daemon --no-build-cache
+        run: gradle clean assembleRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build-output.log
+
+      - name: Upload build log on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: release-build-log
+          path: build-output.log
+          retention-days: 7
 
       - name: Find APK
         id: apk
         run: |
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "Listing all APK files:"
+          find app/build/outputs -name "*.apk" -type f || echo "No APK found!"
+          echo "---"
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: No release APK found!"
+            ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk directory"
+            exit 1
+          fi
           APK_NAME=$(basename "$APK_PATH")
           echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
           echo "APK_NAME=$APK_NAME" >> $GITHUB_OUTPUT
