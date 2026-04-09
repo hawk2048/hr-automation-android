@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace 'com.hiringai.mobile'
-    compileSdk 36
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.hiringai.mobile"
         minSdk 26
-        targetSdk 36
+        targetSdk 35
         versionCode Integer.valueOf(System.getenv("VERSION_CODE") ?: "1")
         versionName System.getenv("VERSION_NAME") ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
