@@ -285,8 +285,10 @@ class LocalLLMService(private val context: Context) {
     private fun parseOllamaResponse(json: String): String? {
         // Simple JSON parsing for {"response": "..."} without Gson dependency overhead
         val key = "\"response\""
-        val keyIndex = json.indexOf(key) ?: return null
-        val colonIndex = json.indexOf(':', keyIndex + key.length) ?: return null
+        val keyIndex = json.indexOf(key)
+        if (keyIndex < 0) return null
+        val colonIndex = json.indexOf(':', keyIndex + key.length)
+        if (colonIndex < 0) return null
         val valueStart = json.indexOf('"', colonIndex) + 1
         val valueEnd = json.indexOf('"', valueStart)
         if (valueStart <= 0 || valueEnd <= valueStart) return null
