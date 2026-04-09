@@ -56,28 +56,17 @@ jobs:
         env:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
-        run: |
-          set -o pipefail
-          gradle clean assembleRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build-output.log
-
-      - name: Upload build log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: release-build-log
-          path: build-output.log
-          retention-days: 7
+        run: gradle clean assembleRelease --no-daemon
 
       - name: Find APK
         id: apk
         run: |
           echo "Listing all APK files:"
-          find app/build/outputs -name "*.apk" -type f || echo "No APK found!"
-          echo "---"
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -1)
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere!"
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f 2>/dev/null | head -1)
           if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No release APK found!"
-            ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk directory"
+            echo "ERROR: No release APK found in app/build/outputs/apk/release/"
+            find app/build/outputs -type f 2>/dev/null || echo "No build outputs directory"
             exit 1
           fi
           APK_NAME=$(basename "$APK_PATH")
@@ -95,6 +84,7 @@ jobs:
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 HEAD)
           fi
           echo "$CHANGELOG" > /tmp/changelog.txt
+          cat /tmp/changelog.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
