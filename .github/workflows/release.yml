@@ -41,13 +41,16 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Decode Keystore
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Decode Release Keystore
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          # Use the committed keystore (same signing key across all builds)
+          # Keystore was generated with: keytool -genkeypair -v -keystore release.keystore ...
+          # It's in .gitignore so we decode from a fixed base64 string in the workflow
+          echo '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' | base64 --decode > app/release.keystore
           echo "KEYSTORE_FILE=app/release.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=HrAuto2026!Release" >> $GITHUB_ENV
+          echo "KEY_ALIAS=hrautomation" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=HrAuto2026!Release" >> $GITHUB_ENV
 
       - name: Extract version from tag
         id: version
@@ -65,9 +68,9 @@ jobs:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
           KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: gradle clean assembleRelease --no-daemon --stacktrace
 
       - name: Verify APK Signature
@@ -75,8 +78,8 @@ jobs:
           echo "=== Verifying APK signatures ==="
           APK_DIR="app/build/outputs/apk/release"
           for apk in "$APK_DIR"/*.apk; do
-            echo "--- $apk ---"
-            $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$apk" 2>&1 || echo "Signature verification failed for $apk"
+            echo "--- $(basename $apk) ---"
+            $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$apk" 2>&1 | head -30
             echo ""
           done
 
@@ -105,19 +108,19 @@ jobs:
           fi
           cat > /tmp/changelog.txt << 'HEADER'
 ## Download Guide
-- **app-arm64-v8a-release.apk** — For most modern Android phones (recommended, ~35MB)
+- **app-arm64-v8a-release.apk** — For most modern Android phones (recommended, ~25MB)
 - **app-x86_64-release.apk** — For emulators and x86 devices
 - **app-universal-release.apk** — Contains all architectures (largest file)
 
-### Xiaomi / HyperOS Installation (Important!)
+### Xiaomi / HyperOS 3.0 Installation (Important!)
 
-**If the installer crashes when you tap "Install", follow these steps:**
+**If the installer crashes when you tap "Install", follow these steps IN ORDER:**
 
-1. **Close "Install Monitor"**: Open **Phone Manager** app > Settings (gear icon) > **Virus Scan** > Turn off **"Install Monitor"**
-2. **Close "Security Guard"**: **Phone Manager** > **Privacy & Security** > **Security** > Turn off **"Security Guard"**
-3. **Allow unknown sources**: **Settings** > **Privacy Protection** > **Special App Permissions** > **Install Unknown Apps** > Enable for your browser or file manager
-4. **Install via File Manager**: Use the built-in **File Manager** app to open the APK instead of the browser
-5. If still failing: **Settings** > **Developer Options** > Disable **"MIUI Optimization"** > Reboot
+1. **Close "Install Monitor"**: Open **Phone Manager** (手机管家) > Settings icon (齿轮) > **Virus Scan** (病毒扫描) > Turn off **"Install Monitor"** (安装监控)
+2. **Close "Security Guard"**: **Phone Manager** > **Privacy & Security** (隐私与安全) > **Security** (安全) > Turn off **"Security Guard"** (安全守护)
+3. **Allow unknown sources**: **Settings** > **Privacy Protection** (隐私保护) > **Special App Permissions** (特殊应用权限) > **Install Unknown Apps** (安装未知应用) > Enable for your browser or file manager
+4. **Install via File Manager**: Use the built-in **File Manager** (文件管理) app to open the APK instead of the browser
+5. If still failing: **Settings** > **Developer Options** (开发者选项) > Disable **"MIUI Optimization"** (MIUI优化) > Reboot
 
 ---
 
@@ -147,8 +150,8 @@ HEADER
           ls -lh ${{ steps.apk.outputs.APK_DIR }}/*.apk 2>/dev/null
           echo "Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }}"
           echo ""
-          echo "Install guide for HyperOS/Xiaomi users:"
-          echo "  1. Download app-arm64-v8a-release.apk (most phones)"
+          echo "Install guide for HyperOS 3.0 / Xiaomi users:"
+          echo "  1. Download app-arm64-v8a-release.apk"
           echo "  2. Phone Manager > Settings > Virus Scan > Disable 'Install Monitor'"
           echo "  3. Phone Manager > Privacy & Security > Security > Disable 'Security Guard'"
           echo "  4. Install via File Manager, not browser"
