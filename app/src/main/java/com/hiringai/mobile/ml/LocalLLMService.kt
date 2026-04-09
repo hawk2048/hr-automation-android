@@ -5,8 +5,10 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.codeshipping.llamakotlin.LlamaModel
 import java.io.File
 import java.io.FileOutputStream
@@ -253,8 +255,8 @@ class LocalLLMService(private val context: Context) {
         try {
             val jsonBody = """{"model":"$model","prompt":${escapeJson(prompt)},"stream":false,"options":{"num_predict":$maxTokens,"temperature":0.7}}"""
 
-            val mediaType = okhttp3.MediaType.parse("application/json; charset=utf-8")
-            val requestBody = okhttp3.RequestBody.create(mediaType, jsonBody)
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+            val requestBody = jsonBody.toRequestBody(mediaType)
 
             val client = OkHttpClient.Builder()
                 .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)

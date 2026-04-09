@@ -178,7 +178,7 @@ class LocalEmbeddingService(private val context: Context) {
 
             // Tokenize
             val tokenIds = tokenize(text, maxLen)
-            val inputIds = tokenIds.toLongArray()
+            val inputIds = tokenIds.map { it.toLong() }.toLongArray()
             val attentionMask = tokenIds.map { if (it != PAD_TOKEN_ID) 1L else 0L }.toLongArray()
             val tokenTypeIds = LongArray(inputIds.size) { 0L }
 
