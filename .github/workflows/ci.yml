@@ -56,10 +56,36 @@ jobs:
           BUILD_EXIT=${PIPESTATUS[0]}
           echo "Build exit code: $BUILD_EXIT"
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "===== BUILD FAILED - Last 200 lines of output ====="
-            tail -200 /tmp/build-debug.log
+            echo "===== BUILD FAILED ====="
+            cat /tmp/build-debug.log
+            # Write error summary to workspace so it can be committed
+            mkdir -p .build-diagnostics
+            cp /tmp/build-debug.log .build-diagnostics/last-build-error.log
+            grep -E "e:|error:|Error:|Exception:|FAILED|Unresolved reference|None of the following|Task :app:" /tmp/build-debug.log | head -100 > .build-diagnostics/error-summary.txt || true
+            # Commit and push error summary
+            git config user.email "ci@github.com"
+            git config user.name "GitHub CI"
+            git add .build-diagnostics/
+            git diff --cached --quiet || git commit -m "ci: build error diagnostics [skip ci]"
+            git push origin HEAD:main || true
             exit $BUILD_EXIT
           fi
+
+      - name: Upload build log as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log-${{ github.sha }}
+          path: /tmp/build-debug.log
+          retention-days: 7
+
+      - name: Upload Debug APK as artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: debug-apk-${{ github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
 
       - name: Upload build log as artifact
         uses: actions/upload-artifact@v4
