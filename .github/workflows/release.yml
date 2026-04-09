@@ -39,24 +39,7 @@ jobs:
       - name: Install SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Generate Release Keystore
-        run: |
-          # Generate a deterministic release keystore (same params = same signing key)
-          keytool -genkeypair -v \
-            -keystore app/release.keystore \
-            -alias hrautomation \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10950 \
-            -storepass "HrAuto2026!Release" \
-            -keypass "HrAuto2026!Release" \
-            -dname "CN=HRAutomation, OU=Development, O=HiringAI, L=Beijing, ST=Beijing, C=CN"
-          echo "KEYSTORE_FILE=app/release.keystore" >> $GITHUB_ENV
-          echo "KEYSTORE_PASSWORD=HrAuto2026!Release" >> $GITHUB_ENV
-          echo "KEY_ALIAS=hrautomation" >> $GITHUB_ENV
-          echo "KEY_PASSWORD=HrAuto2026!Release" >> $GITHUB_ENV
+          sdkmanager "platforms;android-36" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract version from tag
         id: version
@@ -75,21 +58,12 @@ jobs:
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
         run: gradle clean assembleRelease --no-daemon --stacktrace
 
-      - name: Verify APK Signature
-        run: |
-          echo "=== Verifying APK signatures ==="
-          APK_DIR="app/build/outputs/apk/release"
-          for apk in "$APK_DIR"/*.apk; do
-            echo "--- $(basename $apk) ---"
-            $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$apk" 2>&1 | head -30
-            echo ""
-          done
-
       - name: Find APK
         id: apk
         run: |
           echo "Listing all APK files:"
           find . -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere!"
+          # Upload all release APKs (split by ABI)
           APK_DIR="app/build/outputs/apk/release"
           if [ ! -d "$APK_DIR" ]; then
             echo "ERROR: No release APK directory found"
@@ -108,23 +82,21 @@ jobs:
           else
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 HEAD)
           fi
-          # Write changelog without heredoc to avoid YAML parsing issues
-          echo "## Download Guide" > /tmp/changelog.txt
-          echo "- app-arm64-v8a-release.apk — For most modern Android phones (recommended)" >> /tmp/changelog.txt
-          echo "- app-x86_64-release.apk — For emulators and x86 devices" >> /tmp/changelog.txt
-          echo "- app-universal-release.apk — Contains all architectures (largest file)" >> /tmp/changelog.txt
-          echo "" >> /tmp/changelog.txt
-          echo "### Xiaomi / HyperOS 3.0 Installation (Important!)" >> /tmp/changelog.txt
-          echo "" >> /tmp/changelog.txt
-          echo "If the installer crashes when you tap Install, follow these steps:" >> /tmp/changelog.txt
-          echo "" >> /tmp/changelog.txt
-          echo "1. Phone Manager (手机管家) > Settings > Virus Scan (病毒扫描) > Disable Install Monitor (安装监控)" >> /tmp/changelog.txt
-          echo "2. Phone Manager > Privacy & Security (隐私与安全) > Security (安全) > Disable Security Guard (安全守护)" >> /tmp/changelog.txt
-          echo "3. Settings > Privacy Protection (隐私保护) > Special App Permissions > Install Unknown Apps > Enable for your browser" >> /tmp/changelog.txt
-          echo "4. Install via File Manager (文件管理), not browser" >> /tmp/changelog.txt
-          echo "" >> /tmp/changelog.txt
-          echo "---" >> /tmp/changelog.txt
-          echo "" >> /tmp/changelog.txt
+          cat > /tmp/changelog.txt << 'HEADER'
+          ## Download Guide
+          - **app-arm64-v8a-release.apk** — For most modern Android phones (recommended)
+          - **app-x86_64-release.apk** — For emulators and x86 devices
+          - **app-universal-release.apk** — Contains all architectures (largest file)
+
+          ### MIUI/Xiaomi Installation Issues
+          If the installer crashes when you tap "Install":
+          1. Go to **Settings > Apps > App Management > "Package Installer"** > Clear Data & Cache
+          2. Or go to **Settings > Developer Options** > Disable **"MIUI Optimization"** > Reboot
+          3. Or install via **File Manager** app instead of browser
+
+          ---
+
+          HEADER
           echo "$CHANGELOG" >> /tmp/changelog.txt
           cat /tmp/changelog.txt
 
@@ -150,9 +122,8 @@ jobs:
           ls -lh ${{ steps.apk.outputs.APK_DIR }}/*.apk 2>/dev/null
           echo "Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }}"
           echo ""
-          echo "Install guide for HyperOS 3.0 / Xiaomi users:"
-          echo "  1. Download app-arm64-v8a-release.apk"
-          echo "  2. Phone Manager > Settings > Virus Scan > Disable 'Install Monitor'"
-          echo "  3. Phone Manager > Privacy & Security > Security > Disable 'Security Guard'"
-          echo "  4. Install via File Manager, not browser"
+          echo "Install guide for MIUI/Xiaomi users:"
+          echo "  1. Download app-arm64-v8a-release.apk (most phones)"
+          echo "  2. If installer crashes: Settings > Apps > 'Package Installer' > Clear Data"
+          echo "  3. Or: Settings > Developer Options > disable 'MIUI Optimization'"
           echo "=========================================="

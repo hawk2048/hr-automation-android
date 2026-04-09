@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.hiringai.mobile'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.hiringai.mobile"
@@ -16,7 +16,7 @@ android {
         versionName System.getenv("VERSION_NAME") ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Only include ABIs that have native libs (arm64 for devices, x86_64 for emulators)
+        // ONNX Runtime / llama.cpp only ship arm64-v8a and x86_64
         ndk {
             abiFilters 'arm64-v8a', 'x86_64'
         }
@@ -24,11 +24,12 @@ android {
 
     signingConfigs {
         release {
-            // CI sets these env vars before build
-            storeFile file(System.getenv("KEYSTORE_FILE") ?: "app/release.keystore")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "HrAuto2026!Release"
-            keyAlias System.getenv("KEY_ALIAS") ?: "hrautomation"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "HrAuto2026!Release"
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                storeFile file(System.getenv("KEYSTORE_FILE"))
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
         }
     }
 
@@ -52,7 +53,12 @@ android {
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                signingConfig signingConfigs.release
+            } else {
+                // Fallback to debug signing for CI builds without keystore secrets
+                signingConfig signingConfigs.debug
+            }
         }
     }
 
