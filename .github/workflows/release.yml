@@ -56,11 +56,13 @@ jobs:
         env:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
-        run: gradle clean assembleRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build-output.log
+        run: |
+          set -o pipefail
+          gradle clean assembleRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build-output.log
 
-      - name: Upload build log on failure
+      - name: Upload build log
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: release-build-log
           path: build-output.log
