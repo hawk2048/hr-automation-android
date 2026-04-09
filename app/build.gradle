@@ -78,10 +78,18 @@ android {
 
 dependencies {
     // AndroidX Core — pinned to avoid compileSdk 36 requirement
-    // androidx.core:core-ktx:1.16.0+ requires compileSdk 36, stick with 1.15.0
     // Force core:1.15.0 to prevent transitive deps pulling in core:1.17.0 (requires compileSdk 36)
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.core:core:1.15.0'
+}
+
+// Force all transitive AndroidX core dependencies to 1.15.0 to avoid compileSdk 36 requirement
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.core:core:1.15.0'
+        force 'androidx.core:core-ktx:1.15.0'
+    }
+}
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
