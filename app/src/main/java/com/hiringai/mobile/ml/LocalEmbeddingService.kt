@@ -134,8 +134,12 @@ class LocalEmbeddingService(private val context: Context) {
             env = OrtEnvironment.getEnvironment()
             val sessionOptions = OrtSession.SessionOptions()
             sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-            // Use NNAPI on Android for hardware acceleration
-            sessionOptions.addNnapi()
+            // Use NNAPI on Android for hardware acceleration (with fallback)
+            try {
+                sessionOptions.addNnapi()
+            } catch (e: Exception) {
+                Log.w(TAG, "NNAPI not available, falling back to CPU", e)
+            }
 
             session = env?.createSession(modelFile.absolutePath, sessionOptions)
             isModelLoaded = true
