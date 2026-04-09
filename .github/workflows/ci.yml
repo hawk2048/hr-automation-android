@@ -130,3 +130,32 @@ jobs:
           name: debug-apk-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
+
+      - name: Close stale ci-failure issues on success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'ci-failure',
+              state: 'open',
+              per_page: 50
+            });
+            for (const issue of issues) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Build succeeded on commit ${context.sha.substring(0,7)} — closing this issue as resolved.\n\nFix chain: f9316af (compileSdk 36) → 3db6d0c (AGP 8.9.1) → 692d2c0 (Kotlin compile fixes). Released as **v1.1.0**.`
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+              console.log(`Closed issue #${issue.number}`);
+            }
+            if (issues.length === 0) console.log('No open ci-failure issues to close.');
