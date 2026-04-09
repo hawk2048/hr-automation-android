@@ -63,17 +63,16 @@ jobs:
         run: |
           echo "Listing all APK files:"
           find . -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere!"
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f 2>/dev/null | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No release APK found in app/build/outputs/apk/release/"
+          # Upload all release APKs (split by ABI)
+          APK_DIR="app/build/outputs/apk/release"
+          if [ ! -d "$APK_DIR" ]; then
+            echo "ERROR: No release APK directory found"
             find app/build/outputs -type f 2>/dev/null || echo "No build outputs directory"
             exit 1
           fi
-          APK_NAME=$(basename "$APK_PATH")
-          echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
-          echo "APK_NAME=$APK_NAME" >> $GITHUB_OUTPUT
-          echo "Found APK: $APK_PATH"
-          ls -lh "$APK_PATH"
+          echo "APK files in release dir:"
+          ls -lh "$APK_DIR"/*.apk 2>/dev/null || echo "No APKs found"
+          echo "APK_DIR=$APK_DIR" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
         run: |
@@ -83,7 +82,22 @@ jobs:
           else
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 HEAD)
           fi
-          echo "$CHANGELOG" > /tmp/changelog.txt
+          cat > /tmp/changelog.txt << 'HEADER'
+          ## Download Guide
+          - **app-arm64-v8a-release.apk** — For most modern Android phones (recommended)
+          - **app-x86_64-release.apk** — For emulators and x86 devices
+          - **app-universal-release.apk** — Contains all architectures (largest file)
+
+          ### MIUI/Xiaomi Installation Issues
+          If the installer crashes when you tap "Install":
+          1. Go to **Settings > Apps > App Management > "Package Installer"** > Clear Data & Cache
+          2. Or go to **Settings > Developer Options** > Disable **"MIUI Optimization"** > Reboot
+          3. Or install via **File Manager** app instead of browser
+
+          ---
+
+          HEADER
+          echo "$CHANGELOG" >> /tmp/changelog.txt
           cat /tmp/changelog.txt
 
       - name: Create GitHub Release
@@ -95,7 +109,7 @@ jobs:
           draft: false
           prerelease: ${{ contains(steps.version.outputs.TAG, '-') }}
           files: |
-            ${{ steps.apk.outputs.APK_PATH }}
+            ${{ steps.apk.outputs.APK_DIR }}/*.apk
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,6 +118,12 @@ jobs:
         run: |
           echo "=========================================="
           echo "Release created successfully!"
-          echo "APK: ${{ steps.apk.outputs.APK_NAME }}"
+          echo "APK files:"
+          ls -lh ${{ steps.apk.outputs.APK_DIR }}/*.apk 2>/dev/null
           echo "Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }}"
+          echo ""
+          echo "Install guide for MIUI/Xiaomi users:"
+          echo "  1. Download app-arm64-v8a-release.apk (most phones)"
+          echo "  2. If installer crashes: Settings > Apps > 'Package Installer' > Clear Data"
+          echo "  3. Or: Settings > Developer Options > disable 'MIUI Optimization'"
           echo "=========================================="

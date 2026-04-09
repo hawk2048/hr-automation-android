@@ -33,6 +33,16 @@ android {
         }
     }
 
+    // Generate per-ABI APKs for release to reduce size and avoid MIUI installer issues
+    splits {
+        abi {
+            enable gradle.startParameter.taskNames.any { it.contains("Release") }
+            reset()
+            include 'arm64-v8a', 'x86_64'
+            universalApk true  // Also generate a universal APK as fallback
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
