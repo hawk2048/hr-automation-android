@@ -114,6 +114,13 @@ class LocalEmbeddingService(private val context: Context) {
 
     /**
      * 加载模型到内存
+     * 
+     * 注意：ONNX Runtime 的 native 库加载和 OrtEnvironment 创建可能
+     * 在某些设备上触发 native 层 SIGILL（非法指令），这种崩溃
+     * 无法被 Java try-catch 捕获。因此我们：
+     * 1. 不使用 NNAPI（小米设备高通驱动已知崩溃）
+     * 2. 使用 CPU-only 执行提供程序
+     * 3. 升级到 onnxruntime 1.24.4+ 修复 cpuinfo 检测 Bug
      */
     suspend fun loadModel(config: EmbeddingModelConfig): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -130,21 +137,23 @@ class LocalEmbeddingService(private val context: Context) {
             vocab = loadVocab(vocabFile)
             Log.i(TAG, "Vocab loaded: ${vocab.size} tokens")
 
-            // Create ONNX Runtime session
+            // Create ONNX Runtime session — CPU ONLY
+            // NNAPI is explicitly disabled because Qualcomm NNAPI drivers
+            // (qti-default, qti-dsp, qti-gpu, qti-hta) crash on Xiaomi devices
+            // and the native SIGILL cannot be caught by Java try-catch.
             env = OrtEnvironment.getEnvironment()
             val sessionOptions = OrtSession.SessionOptions()
             sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-            // Use NNAPI on Android for hardware acceleration (with fallback)
-            try {
-                sessionOptions.addNnapi()
-            } catch (e: Exception) {
-                Log.w(TAG, "NNAPI not available, falling back to CPU", e)
-            }
+            // DO NOT add NNAPI — it causes native SIGILL/SIGSEGV on Xiaomi devices
 
             session = env?.createSession(modelFile.absolutePath, sessionOptions)
             isModelLoaded = true
             Log.i(TAG, "Embedding model loaded: ${config.name}")
             true
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "ONNX Runtime native library not found or incompatible", e)
+            isModelLoaded = false
+            false
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load embedding model", e)
             isModelLoaded = false
