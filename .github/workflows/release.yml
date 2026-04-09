@@ -112,25 +112,23 @@ jobs:
           else
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 HEAD)
           fi
-          cat > /tmp/changelog.txt << 'HEADER'
-## Download Guide
-- **app-arm64-v8a-release.apk** — For most modern Android phones (recommended, ~25MB)
-- **app-x86_64-release.apk** — For emulators and x86 devices
-- **app-universal-release.apk** — Contains all architectures (largest file)
-
-### Xiaomi / HyperOS 3.0 Installation (Important!)
-
-**If the installer crashes when you tap "Install", follow these steps IN ORDER:**
-
-1. **Close "Install Monitor"**: Open **Phone Manager** (手机管家) > Settings icon (齿轮) > **Virus Scan** (病毒扫描) > Turn off **"Install Monitor"** (安装监控)
-2. **Close "Security Guard"**: **Phone Manager** > **Privacy & Security** (隐私与安全) > **Security** (安全) > Turn off **"Security Guard"** (安全守护)
-3. **Allow unknown sources**: **Settings** > **Privacy Protection** (隐私保护) > **Special App Permissions** (特殊应用权限) > **Install Unknown Apps** (安装未知应用) > Enable for your browser or file manager
-4. **Install via File Manager**: Use the built-in **File Manager** (文件管理) app to open the APK instead of the browser
-5. If still failing: **Settings** > **Developer Options** (开发者选项) > Disable **"MIUI Optimization"** (MIUI优化) > Reboot
-
----
-
-HEADER
+          # Write changelog without heredoc to avoid YAML parsing issues
+          echo "## Download Guide" > /tmp/changelog.txt
+          echo "- app-arm64-v8a-release.apk — For most modern Android phones (recommended)" >> /tmp/changelog.txt
+          echo "- app-x86_64-release.apk — For emulators and x86 devices" >> /tmp/changelog.txt
+          echo "- app-universal-release.apk — Contains all architectures (largest file)" >> /tmp/changelog.txt
+          echo "" >> /tmp/changelog.txt
+          echo "### Xiaomi / HyperOS 3.0 Installation (Important!)" >> /tmp/changelog.txt
+          echo "" >> /tmp/changelog.txt
+          echo "If the installer crashes when you tap Install, follow these steps:" >> /tmp/changelog.txt
+          echo "" >> /tmp/changelog.txt
+          echo "1. Phone Manager (手机管家) > Settings > Virus Scan (病毒扫描) > Disable Install Monitor (安装监控)" >> /tmp/changelog.txt
+          echo "2. Phone Manager > Privacy & Security (隐私与安全) > Security (安全) > Disable Security Guard (安全守护)" >> /tmp/changelog.txt
+          echo "3. Settings > Privacy Protection (隐私保护) > Special App Permissions > Install Unknown Apps > Enable for your browser" >> /tmp/changelog.txt
+          echo "4. Install via File Manager (文件管理), not browser" >> /tmp/changelog.txt
+          echo "" >> /tmp/changelog.txt
+          echo "---" >> /tmp/changelog.txt
+          echo "" >> /tmp/changelog.txt
           echo "$CHANGELOG" >> /tmp/changelog.txt
           cat /tmp/changelog.txt
 
