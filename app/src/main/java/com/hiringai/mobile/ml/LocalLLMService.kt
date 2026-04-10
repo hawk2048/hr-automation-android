@@ -152,6 +152,8 @@ class LocalLLMService(private val context: Context) {
 
     /**
      * 加载模型到内存
+     * 
+     * 安全策略（v1.1.5 起）：使用 SafeNativeLoader 延迟加载 llama.cpp native 库
      */
     suspend fun loadModel(
         config: ModelConfig,
@@ -159,6 +161,12 @@ class LocalLLMService(private val context: Context) {
         gpuLayers: Int = 0
     ): Boolean = withContext(Dispatchers.IO) {
         try {
+            // Step 1: Safe-load llama.cpp native library (lazy, guarded)
+            if (!com.hiringai.mobile.SafeNativeLoader.loadLibrary("llama-android")) {
+                Log.e(TAG, "llama.cpp native library not available — LLM features disabled")
+                return@withContext false
+            }
+
             // Unload existing model first
             unloadModel()
 
@@ -179,6 +187,12 @@ class LocalLLMService(private val context: Context) {
             currentModelName = config.name
             Log.i(TAG, "Model loaded: ${config.name}")
             true
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "llama.cpp native library not found or incompatible", e)
+            com.hiringai.mobile.SafeNativeLoader.markCrashed("llama-android")
+            model = null
+            currentModelName = ""
+            false
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model: ${config.name}", e)
             model = null

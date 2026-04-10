@@ -115,12 +115,12 @@ class LocalEmbeddingService(private val context: Context) {
     /**
      * 加载模型到内存
      * 
-     * 注意：ONNX Runtime 的 native 库加载和 OrtEnvironment 创建可能
-     * 在某些设备上触发 native 层 SIGILL（非法指令），这种崩溃
-     * 无法被 Java try-catch 捕获。因此我们：
-     * 1. 不使用 NNAPI（小米设备高通驱动已知崩溃）
-     * 2. 使用 CPU-only 执行提供程序
-     * 3. 升级到 onnxruntime 1.24.4+ 修复 cpuinfo 检测 Bug
+     * 安全策略（v1.1.5 起）：
+     * 1. 使用 SafeNativeLoader 延迟加载 ONNX Runtime native 库
+     * 2. 不使用 NNAPI（小米设备高通驱动已知崩溃）
+     * 3. 使用 CPU-only 执行提供程序
+     * 4. 设备兼容性检测通过后才尝试加载
+     * 5. 加载失败会记录 crash marker，下次启动自动跳过
      */
     suspend fun loadModel(config: EmbeddingModelConfig): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -133,11 +133,18 @@ class LocalEmbeddingService(private val context: Context) {
                 return@withContext false
             }
 
-            // Load vocab
+            // Step 1: Safe-load ONNX Runtime native library (lazy, guarded)
+            if (!com.hiringai.mobile.SafeNativeLoader.loadLibrary("onnxruntime")) {
+                Log.e(TAG, "ONNX Runtime native library not available — ML features disabled")
+                isModelLoaded = false
+                return@withContext false
+            }
+
+            // Step 2: Load vocab
             vocab = loadVocab(vocabFile)
             Log.i(TAG, "Vocab loaded: ${vocab.size} tokens")
 
-            // Create ONNX Runtime session — CPU ONLY
+            // Step 3: Create ONNX Runtime session — CPU ONLY
             // NNAPI is explicitly disabled because Qualcomm NNAPI drivers
             // (qti-default, qti-dsp, qti-gpu, qti-hta) crash on Xiaomi devices
             // and the native SIGILL cannot be caught by Java try-catch.
@@ -152,6 +159,7 @@ class LocalEmbeddingService(private val context: Context) {
             true
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "ONNX Runtime native library not found or incompatible", e)
+            com.hiringai.mobile.SafeNativeLoader.markCrashed("onnxruntime")
             isModelLoaded = false
             false
         } catch (e: Exception) {

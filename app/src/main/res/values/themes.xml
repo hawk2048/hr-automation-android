@@ -5,8 +5,14 @@
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorAccent">@color/accent</item>
         <item name="android:windowBackground">@color/gray_light</item>
-        <!-- Android 15 edge-to-edge: explicitly set status bar color to avoid crash -->
+        <!-- Android 15 edge-to-edge compatibility:
+             On API 35+, Android enforces edge-to-edge display.
+             Setting explicit status/navigation bar colors ensures the app
+             renders correctly without transparent bars overlapping content.
+             Using @android:color/transparent on API 35+ would cause visual issues. -->
         <item name="android:statusBarColor">@color/primary_dark</item>
         <item name="android:navigationBarColor">@color/gray_light</item>
+        <!-- Opt out of edge-to-edge on API 35+ to avoid layout issues -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>

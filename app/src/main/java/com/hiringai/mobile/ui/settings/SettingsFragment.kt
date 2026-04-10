@@ -220,20 +220,32 @@ class SettingsFragment : Fragment() {
         val embDownloaded = LocalEmbeddingService.AVAILABLE_MODELS.any { embeddingService.isModelDownloaded(it.name) }
         val llmLoaded = llmService.isModelLoaded
         val embLoaded = embeddingService.loaded
+        
+        // Check SafeNativeLoader status for more accurate reporting
+        val onnxAvailable = com.hiringai.mobile.SafeNativeLoader.isAvailable("onnxruntime")
+        val llamaAvailable = com.hiringai.mobile.SafeNativeLoader.isAvailable("llama-android")
+        val hasCrashMarker = com.hiringai.mobile.SafeNativeLoader.hasCrashMarker()
 
         binding.tvLlmStatus.text = when {
+            !llamaAvailable && hasCrashMarker -> "LLM disabled (native crash detected) — use Ollama"
+            !com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible -> "LLM disabled (device incompatible)"
             llmLoaded -> getString(R.string.settings_llm_loaded, llmService.getLoadedModelName())
             llmDownloaded -> getString(R.string.settings_llm_downloaded)
             else -> getString(R.string.settings_model_not_downloaded)
         }
 
         binding.tvEmbeddingStatus.text = when {
+            !onnxAvailable && hasCrashMarker -> "Embedding disabled (native crash detected)"
+            !com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible -> "Embedding disabled (device incompatible)"
             embLoaded -> getString(R.string.settings_embedding_loaded)
             embDownloaded -> getString(R.string.settings_embedding_downloaded)
             else -> getString(R.string.settings_model_not_downloaded)
         }
 
-        binding.btnLoadModel.visibility = if (llmDownloaded || embDownloaded) View.VISIBLE else View.GONE
+        // Show load button only if native libs are available and models are downloaded
+        val canLoadML = com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible && 
+                        !hasCrashMarker && (llmDownloaded || embDownloaded)
+        binding.btnLoadModel.visibility = if (canLoadML) View.VISIBLE else View.GONE
     }
 
     override fun onDestroyView() {
