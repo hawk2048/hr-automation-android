@@ -68,10 +68,10 @@ android {
     // v3 (APK Signature Scheme v3) for Android 9.0+
     // v4 (APK Signature Scheme v4) for Android 11+
     signingConfigs.all {
-        it.v1SigningEnabled = true
-        it.v2SigningEnabled = true
-        it.v3SigningEnabled = true
-        it.v4SigningEnabled = true
+        enableV1Signing = true
+        enableV2Signing = true
+        enableV3Signing = true
+        enableV4Signing = true
     }
 
     compileOptions {
