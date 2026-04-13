@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2026-04-13
+
+### Fixed
+
+- **MIUI installation fix (critical)**: Enabled all APK signing schemes (v1, v2, v3, v4) to fix installation crashes on MIUI/Xiaomi devices. MIUI Package Installer requires v1 (JAR signing) for proper APK verification.
+- Restored missing gradle-wrapper.jar file.
+
 ## [1.1.5] - 2026-04-10
 
 ### Fixed
