@@ -205,13 +205,40 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Load Models Button -->
+            <!-- Load/Unload Models Button -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_load_model"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="@string/settings_load_models"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btn_unload_model"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="卸载模型"
+                    android:visibility="gone"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            </LinearLayout>
+
+            <!-- Test Model Button -->
             <Button
-                android:id="@+id/btn_load_model"
+                android:id="@+id/btn_test_model"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="@string/settings_load_models"
+                android:text="测试模型效果"
                 android:visibility="gone" />
 
             <!-- Ollama Config -->

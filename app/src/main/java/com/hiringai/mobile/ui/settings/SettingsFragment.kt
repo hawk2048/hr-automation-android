@@ -24,6 +24,10 @@ class SettingsFragment : Fragment() {
     private lateinit var embeddingService: LocalEmbeddingService
     private lateinit var prefs: SharedPreferences
 
+    // Track selected models
+    private var selectedLlmModelIndex = 0
+    private var selectedEmbeddingModelIndex = 0
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -36,8 +40,8 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        llmService = LocalLLMService(requireContext())
-        embeddingService = LocalEmbeddingService(requireContext())
+        llmService = LocalLLMService.getInstance(requireContext())
+        embeddingService = LocalEmbeddingService.getInstance(requireContext())
         prefs = requireContext().getSharedPreferences("hra_settings", 0)
 
         setupInferenceMode()
@@ -45,6 +49,8 @@ class SettingsFragment : Fragment() {
         setupEmbeddingModelSelector()
         setupOllamaConfig()
         setupDownloadButton()
+        setupUnloadButton()
+        setupTestButton()
         updateModelStatus()
     }
 
@@ -76,23 +82,92 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupLLMModelSelector() {
-        val modelNames = LocalLLMService.AVAILABLE_MODELS.map { "${it.name} (${formatSize(it.size)}, ${it.requiredRAM}GB RAM)" }
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelNames)
-        binding.spinnerLlmModel.setAdapter(adapter)
-        binding.spinnerLlmModel.setText(modelNames.firstOrNull() ?: "", false)
+        val models = LocalLLMService.AVAILABLE_MODELS
+        val modelDisplayList = models.mapIndexed { index, config ->
+            val isDownloaded = llmService.isModelDownloaded(config.name)
+            val sizeStr = formatSize(config.size)
+            if (isDownloaded) {
+                "✓ ${config.name} ($sizeStr, ${config.requiredRAM}GB RAM)"
+            } else {
+                "${config.name} ($sizeStr, ${config.requiredRAM}GB RAM)"
+            }
+        }
 
-        // Auto-select first non-downloaded model, or first if all downloaded
-        val firstNotDownloaded = LocalLLMService.AVAILABLE_MODELS.indexOfFirst { !llmService.isModelDownloaded(it.name) }
-        if (firstNotDownloaded >= 0) {
-            binding.spinnerLlmModel.setText(modelNames[firstNotDownloaded], false)
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelDisplayList)
+        binding.spinnerLlmModel.setAdapter(adapter)
+
+        val firstDownloaded = models.indexOfFirst { llmService.isModelDownloaded(it.name) }
+        selectedLlmModelIndex = if (firstDownloaded >= 0) firstDownloaded else 0
+        binding.spinnerLlmModel.setText(modelDisplayList[selectedLlmModelIndex], false)
+
+        updateLlmButtonState()
+
+        binding.spinnerLlmModel.setOnItemClickListener { _, _, position, _ ->
+            selectedLlmModelIndex = position
+            updateLlmButtonState()
+            updateModelStatus()
         }
     }
 
+    private fun updateLlmButtonState() {
+        val models = LocalLLMService.AVAILABLE_MODELS
+        if (selectedLlmModelIndex < 0 || selectedLlmModelIndex >= models.size) return
+
+        val config = models[selectedLlmModelIndex]
+        val isDownloaded = llmService.isModelDownloaded(config.name)
+        val isLoaded = llmService.isModelLoaded && llmService.getLoadedModelName() == config.name
+
+        binding.btnDownloadLlmModel.text = when {
+            isLoaded -> "已加载 ✓"
+            isDownloaded -> "重新下载"
+            else -> "下载模型"
+        }
+
+        binding.btnDownloadLlmModel.isEnabled = !isLoaded
+    }
+
     private fun setupEmbeddingModelSelector() {
-        val modelNames = LocalEmbeddingService.AVAILABLE_MODELS.map { "${it.name} (${formatSize(it.modelSize)})" }
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelNames)
+        val models = LocalEmbeddingService.AVAILABLE_MODELS
+        val modelDisplayList = models.map { config ->
+            val isDownloaded = embeddingService.isModelDownloaded(config.name)
+            if (isDownloaded) {
+                "✓ ${config.name} (${formatSize(config.modelSize)}, ${config.dimension}维)"
+            } else {
+                "${config.name} (${formatSize(config.modelSize)}, ${config.dimension}维)"
+            }
+        }
+
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelDisplayList)
         binding.spinnerEmbeddingModel.setAdapter(adapter)
-        binding.spinnerEmbeddingModel.setText(modelNames.firstOrNull() ?: "", false)
+
+        val firstDownloaded = models.indexOfFirst { embeddingService.isModelDownloaded(it.name) }
+        selectedEmbeddingModelIndex = if (firstDownloaded >= 0) firstDownloaded else 0
+        binding.spinnerEmbeddingModel.setText(modelDisplayList[selectedEmbeddingModelIndex], false)
+
+        updateEmbeddingButtonState()
+
+        binding.spinnerEmbeddingModel.setOnItemClickListener { _, _, position, _ ->
+            selectedEmbeddingModelIndex = position
+            updateEmbeddingButtonState()
+            updateModelStatus()
+        }
+    }
+
+    private fun updateEmbeddingButtonState() {
+        val models = LocalEmbeddingService.AVAILABLE_MODELS
+        if (selectedEmbeddingModelIndex < 0 || selectedEmbeddingModelIndex >= models.size) return
+
+        val config = models[selectedEmbeddingModelIndex]
+        val isDownloaded = embeddingService.isModelDownloaded(config.name)
+        val isLoaded = embeddingService.loaded
+
+        binding.btnDownloadEmbeddingModel.text = when {
+            isLoaded -> "已加载 ✓"
+            isDownloaded -> "重新下载"
+            else -> "下载模型"
+        }
+
+        binding.btnDownloadEmbeddingModel.isEnabled = !isLoaded
     }
 
     private fun setupOllamaConfig() {
@@ -108,22 +183,29 @@ class SettingsFragment : Fragment() {
 
     private fun setupDownloadButton() {
         binding.btnDownloadLlmModel.setOnClickListener {
-            val position = binding.spinnerLlmModel.listSelection
             val models = LocalLLMService.AVAILABLE_MODELS
-            if (position < 0 || position >= models.size) {
-                // Fallback: try to match by text
-                val selectedText = binding.spinnerLlmModel.text.toString()
-                val model = models.firstOrNull { selectedText.startsWith(it.name) } ?: return@setOnClickListener
-                downloadLLMModel(model)
-            } else {
-                downloadLLMModel(models[position])
+            if (selectedLlmModelIndex < 0 || selectedLlmModelIndex >= models.size) return@setOnClickListener
+
+            val config = models[selectedLlmModelIndex]
+            if (llmService.isModelLoaded && llmService.getLoadedModelName() == config.name) {
+                Toast.makeText(requireContext(), "模型已在内存中", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            downloadLLMModel(config)
         }
 
         binding.btnDownloadEmbeddingModel.setOnClickListener {
-            val selectedText = binding.spinnerEmbeddingModel.text.toString()
-            val model = LocalEmbeddingService.AVAILABLE_MODELS.firstOrNull { selectedText.startsWith(it.name) } ?: return@setOnClickListener
-            downloadEmbeddingModel(model)
+            val models = LocalEmbeddingService.AVAILABLE_MODELS
+            if (selectedEmbeddingModelIndex < 0 || selectedEmbeddingModelIndex >= models.size) return@setOnClickListener
+
+            val config = models[selectedEmbeddingModelIndex]
+            if (embeddingService.loaded) {
+                Toast.makeText(requireContext(), "Embedding模型已在内存中", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            downloadEmbeddingModel(config)
         }
 
         binding.btnLoadModel.setOnClickListener {
@@ -131,9 +213,65 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    private fun setupUnloadButton() {
+        binding.btnUnloadModel.setOnClickListener {
+            llmService.unloadModel()
+            embeddingService.unloadModel()
+            updateModelStatus()
+            Toast.makeText(requireContext(), "模型已从内存卸载", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupTestButton() {
+        binding.btnTestModel.setOnClickListener {
+            testModels()
+        }
+    }
+
+    private fun testModels() {
+        if (!llmService.isModelLoaded) {
+            Toast.makeText(requireContext(), "请先加载LLM模型", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        binding.btnTestModel.isEnabled = false
+        binding.btnTestModel.text = "测试中..."
+
+        lifecycleScope.launch {
+            val testPrompt = "请用一句话介绍你自己"
+
+            val result = llmService.generate(testPrompt)
+
+            requireActivity().runOnUiThread {
+                binding.btnTestModel.isEnabled = true
+                binding.btnTestModel.text = "测试模型效果"
+
+                if (result != null) {
+                    showTestResult(result)
+                } else {
+                    Toast.makeText(requireContext(), "模型生成失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun showTestResult(result: String) {
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("模型测试结果")
+            .setMessage("输入: 请用一句话介绍你自己\n\n输出: $result")
+            .setPositiveButton("确定", null)
+            .setNeutralButton("复制") { _, _ ->
+                val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("test_result", result))
+                Toast.makeText(requireContext(), "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
     private fun downloadLLMModel(config: LocalLLMService.ModelConfig) {
         binding.progressDownloadLlm.visibility = View.VISIBLE
         binding.btnDownloadLlmModel.isEnabled = false
+        binding.btnDownloadLlmModel.text = "下载中..."
 
         lifecycleScope.launch {
             val success = llmService.downloadModel(config) { progress ->
@@ -141,24 +279,25 @@ class SettingsFragment : Fragment() {
                     binding.progressDownloadLlm.progress = progress
                     if (progress == 100) {
                         binding.progressDownloadLlm.visibility = View.GONE
-                        binding.btnDownloadLlmModel.isEnabled = true
                         updateModelStatus()
+                        Toast.makeText(requireContext(), "下载完成: ${config.name}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             if (!success) {
                 requireActivity().runOnUiThread {
                     binding.progressDownloadLlm.visibility = View.GONE
-                    binding.btnDownloadLlmModel.isEnabled = true
                     Toast.makeText(requireContext(), getString(R.string.settings_download_failed), Toast.LENGTH_SHORT).show()
                 }
             }
+            updateModelStatus()
         }
     }
 
     private fun downloadEmbeddingModel(config: LocalEmbeddingService.EmbeddingModelConfig) {
         binding.progressDownloadEmbedding.visibility = View.VISIBLE
         binding.btnDownloadEmbeddingModel.isEnabled = false
+        binding.btnDownloadEmbeddingModel.text = "下载中..."
 
         lifecycleScope.launch {
             val success = embeddingService.downloadModel(config) { progress ->
@@ -166,42 +305,46 @@ class SettingsFragment : Fragment() {
                     binding.progressDownloadEmbedding.progress = progress
                     if (progress == 100) {
                         binding.progressDownloadEmbedding.visibility = View.GONE
-                        binding.btnDownloadEmbeddingModel.isEnabled = true
                         updateModelStatus()
+                        Toast.makeText(requireContext(), "下载完成: ${config.name}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             if (!success) {
                 requireActivity().runOnUiThread {
                     binding.progressDownloadEmbedding.visibility = View.GONE
-                    binding.btnDownloadEmbeddingModel.isEnabled = true
                     Toast.makeText(requireContext(), getString(R.string.settings_download_failed), Toast.LENGTH_SHORT).show()
                 }
             }
+            updateModelStatus()
         }
     }
 
     private fun loadModels() {
         binding.btnLoadModel.isEnabled = false
+        binding.btnLoadModel.text = "加载中..."
 
         lifecycleScope.launch {
             var llmLoaded = false
             var embLoaded = false
 
-            // Load LLM
-            val llmConfig = LocalLLMService.AVAILABLE_MODELS.firstOrNull { llmService.isModelDownloaded(it.name) }
-            if (llmConfig != null) {
-                llmLoaded = llmService.loadModel(llmConfig)
+            val llmModels = LocalLLMService.AVAILABLE_MODELS
+            if (selectedLlmModelIndex in llmModels.indices) {
+                val llmConfig = llmModels[selectedLlmModelIndex]
+                if (llmService.isModelDownloaded(llmConfig.name)) {
+                    llmLoaded = llmService.loadModel(llmConfig)
+                }
             }
 
-            // Load Embedding
-            val embConfig = LocalEmbeddingService.AVAILABLE_MODELS.firstOrNull { embeddingService.isModelDownloaded(it.name) }
-            if (embConfig != null) {
-                embLoaded = embeddingService.loadModel(embConfig)
+            val embModels = LocalEmbeddingService.AVAILABLE_MODELS
+            if (selectedEmbeddingModelIndex in embModels.indices) {
+                val embConfig = embModels[selectedEmbeddingModelIndex]
+                if (embeddingService.isModelDownloaded(embConfig.name)) {
+                    embLoaded = embeddingService.loadModel(embConfig)
+                }
             }
 
             requireActivity().runOnUiThread {
-                binding.btnLoadModel.isEnabled = true
                 updateModelStatus()
 
                 val msg = when {
@@ -216,36 +359,63 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateModelStatus() {
+        setupLLMModelSelector()
+        setupEmbeddingModelSelector()
+
         val llmDownloaded = LocalLLMService.AVAILABLE_MODELS.any { llmService.isModelDownloaded(it.name) }
         val embDownloaded = LocalEmbeddingService.AVAILABLE_MODELS.any { embeddingService.isModelDownloaded(it.name) }
         val llmLoaded = llmService.isModelLoaded
         val embLoaded = embeddingService.loaded
-        
-        // Check SafeNativeLoader status for more accurate reporting
+
         val onnxAvailable = com.hiringai.mobile.SafeNativeLoader.isAvailable("onnxruntime")
         val llamaAvailable = com.hiringai.mobile.SafeNativeLoader.isAvailable("llama-android")
         val hasCrashMarker = com.hiringai.mobile.SafeNativeLoader.hasCrashMarker()
 
-        binding.tvLlmStatus.text = when {
-            !llamaAvailable && hasCrashMarker -> "LLM disabled (native crash detected) — use Ollama"
-            !com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible -> "LLM disabled (device incompatible)"
-            llmLoaded -> getString(R.string.settings_llm_loaded, llmService.getLoadedModelName())
-            llmDownloaded -> getString(R.string.settings_llm_downloaded)
-            else -> getString(R.string.settings_model_not_downloaded)
+        binding.tvLlmStatus.text = buildString {
+            if (!llamaAvailable && hasCrashMarker) {
+                append("⚠ LLM已禁用 (native crash detected)")
+            } else if (!com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible) {
+                append("⚠ LLM已禁用 (设备不兼容)")
+            } else if (llmLoaded) {
+                append("✓ 已加载: ${llmService.getLoadedModelName()}")
+            } else if (llmDownloaded) {
+                val downloaded = LocalLLMService.AVAILABLE_MODELS.filter { llmService.isModelDownloaded(it.name) }
+                    .joinToString(", ") { it.name }
+                append("✓ 已下载: $downloaded")
+            } else {
+                append("未下载任何模型")
+            }
         }
 
-        binding.tvEmbeddingStatus.text = when {
-            !onnxAvailable && hasCrashMarker -> "Embedding disabled (native crash detected)"
-            !com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible -> "Embedding disabled (device incompatible)"
-            embLoaded -> getString(R.string.settings_embedding_loaded)
-            embDownloaded -> getString(R.string.settings_embedding_downloaded)
-            else -> getString(R.string.settings_model_not_downloaded)
+        binding.tvEmbeddingStatus.text = buildString {
+            if (!onnxAvailable && hasCrashMarker) {
+                append("⚠ Embedding已禁用 (native crash detected)")
+            } else if (!com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible) {
+                append("⚠ Embedding已禁用 (设备不兼容)")
+            } else if (embLoaded) {
+                append("✓ 已加载: all-MiniLM-L6-v2")
+            } else if (embDownloaded) {
+                append("✓ 已下载: all-MiniLM-L6-v2")
+            } else {
+                append("未下载")
+            }
         }
 
-        // Show load button only if native libs are available and models are downloaded
-        val canLoadML = com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible && 
+        // Show buttons based on model status
+        val canLoadML = com.hiringai.mobile.SafeNativeLoader.isDeviceCompatible &&
                         !hasCrashMarker && (llmDownloaded || embDownloaded)
         binding.btnLoadModel.visibility = if (canLoadML) View.VISIBLE else View.GONE
+        if (canLoadML) {
+            binding.btnLoadModel.text = getString(R.string.settings_load_models)
+            binding.btnLoadModel.isEnabled = true
+        }
+
+        // Show unload button if any model is loaded
+        val anyLoaded = llmLoaded || embLoaded
+        binding.btnUnloadModel.visibility = if (anyLoaded) View.VISIBLE else View.GONE
+
+        // Show test button only if LLM is loaded
+        binding.btnTestModel.visibility = if (llmLoaded) View.VISIBLE else View.GONE
     }
 
     override fun onDestroyView() {

@@ -59,6 +59,38 @@ class LocalEmbeddingService(private val context: Context) {
             )
         )
 
+        @Volatile
+        private var instance: LocalEmbeddingService? = null
+
+        fun getInstance(context: Context): LocalEmbeddingService {
+            return instance ?: synchronized(this) {
+                instance ?: LocalEmbeddingService(context.applicationContext).also { instance = it }
+            }
+        }
+
+        // 保存加载状态到SharedPreferences
+        private const val PREFS_NAME = "ml_embedding_state"
+        private const val KEY_LOADED_MODEL = "loaded_embedding_model"
+
+        fun saveLoadedModelName(context: Context, modelName: String) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LOADED_MODEL, modelName)
+                .apply()
+        }
+
+        fun getLoadedModelNameFromPrefs(context: Context): String? {
+            return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_LOADED_MODEL, null)
+        }
+
+        fun clearLoadedModelName(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_LOADED_MODEL)
+                .apply()
+        }
+
         // Special tokens for BERT-style models
         private const val CLS_TOKEN = "[CLS]"
         private const val SEP_TOKEN = "[SEP]"
@@ -158,6 +190,10 @@ class LocalEmbeddingService(private val context: Context) {
 
             session = env?.createSession(modelFile.absolutePath, sessionOptions)
             isModelLoaded = true
+
+            // 保存加载状态
+            saveLoadedModelName(context, config.name)
+
             Log.i(TAG, "Embedding model loaded: ${config.name}")
             true
         } catch (e: UnsatisfiedLinkError) {
@@ -185,6 +221,9 @@ class LocalEmbeddingService(private val context: Context) {
         session = null
         isModelLoaded = false
         vocab = emptyMap()
+
+        // 清除加载状态
+        clearLoadedModelName(context)
     }
 
     /**

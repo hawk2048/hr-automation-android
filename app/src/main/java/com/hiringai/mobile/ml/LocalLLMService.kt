@@ -13,15 +13,16 @@ import org.codeshipping.llamakotlin.LlamaModel
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 /**
- * 本地 LLM 推理服务
+ * 本地 LLM 推理服务 (单例模式)
  *
  * 支持两种推理方式：
- * 1. 设备端推理 — 通过 llama-kotlin-android (llama.cpp JNI) 加载 GGUF 模型，数据不出设备
- * 2. 远程 Ollama — 通过 HTTP 调用远程 Ollama 服务器，需在电脑/服务器上运行
+ * 1. 设备端推理 — 通过 llama-kotlin-android (llama.cpp JNI) 加载 GGUF 模型
+ * 2. 远程 Ollama — 通过 HTTP 调用远程 Ollama 服务器
  */
-class LocalLLMService(private val context: Context) {
+class LocalLLMService private constructor(private val context: Context) {
 
     private var model: LlamaModel? = null
     private var currentModelName: String = ""
@@ -32,13 +33,15 @@ class LocalLLMService(private val context: Context) {
         val size: Long,
         val requiredRAM: Int,
         val contextSize: Int = 2048,
-        val template: String = "chatml"   // prompt format template
+        val template: String = "chatml"
     )
 
     companion object {
         private const val TAG = "LocalLLMService"
 
-        // 使用 hf-mirror.com 国内镜像解决 huggingface.co 被墙问题
+        @Volatile
+        private var instance: LocalLLMService? = null
+
         private const val HF_MIRROR = "https://hf-mirror.com"
 
         val AVAILABLE_MODELS = listOf(
@@ -60,6 +63,12 @@ class LocalLLMService(private val context: Context) {
             )
         )
 
+        fun getInstance(context: Context): LocalLLMService {
+            return instance ?: synchronized(this) {
+                instance ?: LocalLLMService(context.applicationContext).also { instance = it }
+            }
+        }
+
         fun getModelsDir(context: Context): File {
             val dir = File(context.filesDir, "models")
             if (!dir.exists()) dir.mkdirs()
@@ -71,23 +80,40 @@ class LocalLLMService(private val context: Context) {
             if (!dir.exists()) dir.mkdirs()
             return dir
         }
+
+        // 保存加载状态到SharedPreferences
+        private const val PREFS_NAME = "ml_model_state"
+        private const val KEY_LOADED_MODEL = "loaded_llm_model"
+
+        fun saveLoadedModelName(context: Context, modelName: String) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LOADED_MODEL, modelName)
+                .apply()
+        }
+
+        fun getLoadedModelNameFromPrefs(context: Context): String? {
+            return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_LOADED_MODEL, null)
+        }
+
+        fun clearLoadedModelName(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_LOADED_MODEL)
+                .apply()
+        }
     }
 
     val isModelLoaded: Boolean get() = model != null
 
     fun getLoadedModelName(): String = currentModelName
 
-    /**
-     * 检查模型是否已下载
-     */
     fun isModelDownloaded(modelName: String): Boolean {
         val file = File(getModelsDir(context), "$modelName.gguf")
         return file.exists() && file.length() > 0
     }
 
-    /**
-     * 下载 GGUF 模型文件到设备存储
-     */
     suspend fun downloadModel(
         config: ModelConfig,
         onProgress: (Int) -> Unit
@@ -95,13 +121,11 @@ class LocalLLMService(private val context: Context) {
         try {
             val targetFile = File(getModelsDir(context), "${config.name}.gguf")
 
-            // Already downloaded
             if (targetFile.exists() && targetFile.length() == config.size) {
                 onProgress(100)
                 return@withContext true
             }
 
-            // Delete partial download if exists
             if (targetFile.exists()) {
                 targetFile.delete()
             }
@@ -111,6 +135,8 @@ class LocalLLMService(private val context: Context) {
             val url = URL(config.url)
             val connection = url.openConnection()
             connection.connect()
+            connection.readTimeout = 60000
+            connection.connectTimeout = 30000
             val contentLength = connection.contentLengthLong
 
             val tempFile = File(targetFile.parent, "${config.name}.gguf.tmp")
@@ -137,7 +163,6 @@ class LocalLLMService(private val context: Context) {
                 }
             }
 
-            // Rename temp to final
             if (tempFile.renameTo(targetFile)) {
                 onProgress(100)
                 Log.i(TAG, "Model downloaded: ${config.name} (${targetFile.length()} bytes)")
@@ -153,24 +178,17 @@ class LocalLLMService(private val context: Context) {
         }
     }
 
-    /**
-     * 加载模型到内存
-     * 
-     * 安全策略（v1.1.5 起）：使用 SafeNativeLoader 延迟加载 llama.cpp native 库
-     */
     suspend fun loadModel(
         config: ModelConfig,
         threads: Int = 4,
         gpuLayers: Int = 0
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Step 1: Safe-load llama.cpp native library (lazy, guarded)
             if (!com.hiringai.mobile.SafeNativeLoader.loadLibrary("llama-android")) {
-                Log.e(TAG, "llama.cpp native library not available — LLM features disabled")
+                Log.e(TAG, "llama.cpp native library not available")
                 return@withContext false
             }
 
-            // Unload existing model first
             unloadModel()
 
             val modelFile = File(getModelsDir(context), "${config.name}.gguf")
@@ -188,6 +206,10 @@ class LocalLLMService(private val context: Context) {
                 this.gpuLayers = gpuLayers
             }
             currentModelName = config.name
+
+            // 保存加载状态
+            saveLoadedModelName(context, config.name)
+
             Log.i(TAG, "Model loaded: ${config.name}")
             true
         } catch (e: UnsatisfiedLinkError) {
@@ -204,9 +226,6 @@ class LocalLLMService(private val context: Context) {
         }
     }
 
-    /**
-     * 释放模型资源
-     */
     fun unloadModel() {
         try {
             model?.close()
@@ -215,12 +234,11 @@ class LocalLLMService(private val context: Context) {
         }
         model = null
         currentModelName = ""
+
+        // 清除加载状态
+        clearLoadedModelName(context)
     }
 
-    /**
-     * 生成文本（人才画像、评估等）
-     * 使用本地 llama.cpp 推理
-     */
     suspend fun generate(
         prompt: String,
         maxTokens: Int = 512,
@@ -242,9 +260,6 @@ class LocalLLMService(private val context: Context) {
         }
     }
 
-    /**
-     * 流式生成文本
-     */
     fun generateStream(prompt: String): Flow<String>? {
         val m = model
         if (m == null) {
@@ -259,10 +274,6 @@ class LocalLLMService(private val context: Context) {
         }
     }
 
-    /**
-     * 调用远程 Ollama 服务器（备选方案）
-     * Ollama 不支持 Android，需在电脑或服务器上运行
-     */
     suspend fun generateViaOllama(
         ollamaUrl: String,
         model: String,
@@ -276,8 +287,8 @@ class LocalLLMService(private val context: Context) {
             val requestBody = jsonBody.toRequestBody(mediaType)
 
             val client = OkHttpClient.Builder()
-                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
                 .build()
 
             val request = Request.Builder()
@@ -293,7 +304,6 @@ class LocalLLMService(private val context: Context) {
                 return@withContext null
             }
 
-            // Parse "response" field from JSON
             body?.let { parseOllamaResponse(it) }
         } catch (e: Exception) {
             Log.e(TAG, "Ollama call failed", e)
@@ -302,7 +312,6 @@ class LocalLLMService(private val context: Context) {
     }
 
     private fun parseOllamaResponse(json: String): String? {
-        // Simple JSON parsing for {"response": "..."} without Gson dependency overhead
         val key = "\"response\""
         val keyIndex = json.indexOf(key)
         if (keyIndex < 0) return null
