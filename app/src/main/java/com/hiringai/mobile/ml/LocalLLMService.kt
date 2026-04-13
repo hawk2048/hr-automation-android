@@ -38,10 +38,13 @@ class LocalLLMService(private val context: Context) {
     companion object {
         private const val TAG = "LocalLLMService"
 
+        // 使用 hf-mirror.com 国内镜像解决 huggingface.co 被墙问题
+        private const val HF_MIRROR = "https://hf-mirror.com"
+
         val AVAILABLE_MODELS = listOf(
             ModelConfig(
                 name = "Qwen2.5-0.5B-Instruct-Q4_0",
-                url = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
+                url = "$HF_MIRROR/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
                 size = 394_774_816,
                 requiredRAM = 2,
                 contextSize = 2048,
@@ -49,7 +52,7 @@ class LocalLLMService(private val context: Context) {
             ),
             ModelConfig(
                 name = "TinyLlama-1.1B-Chat-Q4_K_M",
-                url = "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                url = "$HF_MIRROR/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 size = 667_825_984,
                 requiredRAM = 3,
                 contextSize = 2048,

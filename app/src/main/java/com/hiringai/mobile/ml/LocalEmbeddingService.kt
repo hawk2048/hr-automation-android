@@ -45,11 +45,14 @@ class LocalEmbeddingService(private val context: Context) {
     companion object {
         private const val TAG = "LocalEmbedding"
 
+        // 使用 hf-mirror.com 国内镜像解决 huggingface.co 被墙问题
+        private const val HF_MIRROR = "https://hf-mirror.com"
+
         val AVAILABLE_MODELS = listOf(
             EmbeddingModelConfig(
                 name = "all-MiniLM-L6-v2",
-                modelUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx",
-                vocabUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt",
+                modelUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt",
                 modelSize = 90_000_000,
                 dimension = 384,
                 maxSeqLength = 256
