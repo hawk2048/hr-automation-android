@@ -133,6 +133,9 @@ dependencies {
     // ML — On-device Embedding (ONNX Runtime) — NNAPI disabled in code, CPU-only
     implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.24.3'
 
+    // PDF parsing for resume extraction
+    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+
     // Testing
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'

@@ -1,13 +1,18 @@
 package com.hiringai.mobile.ui.candidates
 
+import android.app.Activity
 import android.app.AlertDialog
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,6 +20,8 @@ import com.hiringai.mobile.R
 import com.hiringai.mobile.data.local.AppDatabase
 import com.hiringai.mobile.data.local.entity.CandidateEntity
 import com.hiringai.mobile.databinding.FragmentCandidatesBinding
+import com.hiringai.mobile.ml.LocalLLMService
+import com.hiringai.mobile.util.PdfExtractor
 import kotlinx.coroutines.launch
 
 class CandidatesFragment : Fragment() {
@@ -23,7 +30,23 @@ class CandidatesFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var db: AppDatabase
+    private lateinit var llmService: LocalLLMService
     private lateinit var adapter: CandidateAdapter
+
+    // For PDF upload
+    private var pendingResume: String? = null
+    private var selectedPdfUri: Uri? = null
+
+    private val pdfPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                selectedPdfUri = uri
+                processPdfAndAnalyze(uri)
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,6 +61,7 @@ class CandidatesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         db = AppDatabase.getInstance(requireContext())
+        llmService = LocalLLMService.getInstance(requireContext())
 
         setupRecyclerView()
         setupFab()
@@ -80,6 +104,9 @@ class CandidatesFragment : Fragment() {
     }
 
     private fun showAddCandidateDialog() {
+        pendingResume = null
+        selectedPdfUri = null
+
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(50, 20, 50, 20)
@@ -102,30 +129,125 @@ class CandidatesFragment : Fragment() {
         }
         layout.addView(etPhone)
 
+        val tvResumeLabel = TextView(requireContext()).apply {
+            text = "简历 (PDF):"
+            setPadding(0, 20, 0, 10)
+        }
+        layout.addView(tvResumeLabel)
+
+        val btnUploadPdf = Button(requireContext()).apply {
+            text = "上传 PDF 简历"
+        }
+        layout.addView(btnUploadPdf)
+
+        val tvPdfStatus = TextView(requireContext()).apply {
+            text = "未选择文件"
+            setTextColor(android.graphics.Color.GRAY)
+        }
+        layout.addView(tvPdfStatus)
+
         val etResume = EditText(requireContext()).apply {
-            hint = "简历简介 (选填)"
+            hint = "或手动输入简历内容"
             minLines = 3
         }
         layout.addView(etResume)
 
-        AlertDialog.Builder(requireContext())
+        // PDF upload button click
+        btnUploadPdf.setOnClickListener {
+            val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                type = "application/pdf"
+            }
+            pdfPickerLauncher.launch(intent)
+        }
+
+        val dialog = AlertDialog.Builder(requireContext())
             .setTitle("添加候选人")
             .setView(layout)
             .setPositiveButton("添加") { _, _ ->
                 val name = etName.text.toString().trim()
                 val email = etEmail.text.toString().trim()
                 val phone = etPhone.text.toString().trim()
-                val resume = etResume.text.toString().trim()
+                val manualResume = etResume.text.toString().trim()
+                val resume = pendingResume ?: manualResume
 
                 if (name.isEmpty()) {
                     Toast.makeText(requireContext(), "请输入姓名", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
-                addCandidate(name, email, phone, resume)
+                // If LLM is loaded, offer to analyze
+                if (llmService.isModelLoaded && resume.isNotEmpty()) {
+                    showAnalyzeDialog(name, email, phone, resume)
+                } else {
+                    addCandidate(name, email, phone, resume)
+                }
             }
             .setNegativeButton("取消", null)
+            .create()
+
+        dialog.show()
+    }
+
+    private fun processPdfAndAnalyze(uri: Uri) {
+        lifecycleScope.launch {
+            Toast.makeText(requireContext(), "正在提取PDF内容...", Toast.LENGTH_SHORT).show()
+
+            val extractedText = PdfExtractor.extractText(requireContext(), uri)
+            if (extractedText != null && extractedText.isNotEmpty()) {
+                pendingResume = PdfExtractor.cleanText(extractedText)
+                Toast.makeText(requireContext(), "PDF提取成功! (${pendingResume?.length}字符)", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "PDF提取失败，请手动输入", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showAnalyzeDialog(name: String, email: String, phone: String, resume: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("AI 画像分析")
+            .setMessage("是否使用 AI 分析简历内容?")
+            .setPositiveButton("分析") { _, _ ->
+                analyzeCandidate(name, email, phone, resume)
+            }
+            .setNegativeButton("跳过") { _, _ ->
+                addCandidate(name, email, phone, resume)
+            }
             .show()
+    }
+
+    private fun analyzeCandidate(name: String, email: String, phone: String, resume: String) {
+        binding.progressBar.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            val prompt = buildString {
+                append("请分析以下简历，生成候选人画像:\n\n")
+                append("简历内容:\n$resume\n\n")
+                append("请分析:\n")
+                append("1. 姓名/联系方式 (如有)\n")
+                append("2. 教育背景\n")
+                append("3. 工作经历 (列出公司/职位/年限)\n")
+                append("4. 技能清单 (技术技能/软技能)\n")
+                append("5. 项目经验 (关键项目描述)\n")
+                append("6. 证书/培训 (如有)\n")
+                append("7. 自我评价/职业目标 (如有)\n")
+            }
+
+            val analysis = llmService.generate(prompt, maxTokens = 500)
+
+            requireActivity().runOnUiThread {
+                binding.progressBar.visibility = View.GONE
+
+                if (analysis != null) {
+                    val fullResume = "【简历分析】\n$analysis\n\n【原始内容】\n$resume"
+                    addCandidate(name, email, phone, fullResume)
+                    Toast.makeText(requireContext(), "简历分析完成!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "分析失败，使用原始内容", Toast.LENGTH_SHORT).show()
+                    addCandidate(name, email, phone, resume)
+                }
+            }
+        }
     }
 
     private fun addCandidate(name: String, email: String, phone: String, resume: String) {
