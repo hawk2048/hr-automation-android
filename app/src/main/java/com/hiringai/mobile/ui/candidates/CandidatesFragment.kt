@@ -65,6 +65,7 @@ class CandidatesFragment : Fragment() {
 
         setupRecyclerView()
         setupFab()
+        setupBatchImport()
         loadCandidates()
     }
 
@@ -80,6 +81,171 @@ class CandidatesFragment : Fragment() {
         binding.fabAdd.setOnClickListener {
             showAddCandidateDialog()
         }
+    }
+
+    private fun setupBatchImport() {
+        binding.btnBatchImport.setOnClickListener {
+            // Open file picker for multiple PDFs
+            val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                type = "application/pdf"
+                putExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, true)
+            }
+            batchPickerLauncher.launch(intent)
+        }
+    }
+
+    private val batchPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val clipData = result.data?.clipData
+            val uris = mutableListOf<Uri>()
+
+            if (clipData != null) {
+                for (i in 0 until clipData.itemCount) {
+                    uris.add(clipData.getItemAt(i).uri)
+                }
+            } else {
+                result.data?.data?.let { uris.add(it) }
+            }
+
+            if (uris.isNotEmpty()) {
+                startBatchImport(uris)
+            }
+        }
+    }
+
+    private fun startBatchImport(uris: List<Uri>) {
+        if (!llmService.isModelLoaded) {
+            Toast.makeText(requireContext(), "请先在设置中加载LLM模型", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        binding.cardImportProgress.visibility = View.VISIBLE
+        binding.btnBatchImport.isEnabled = false
+
+        val total = uris.size
+        var processed = 0
+        var success = 0
+        var failed = 0
+
+        lifecycleScope.launch {
+            for (uri in uris) {
+                try {
+                    requireActivity().runOnUiThread {
+                        binding.tvImportStatus.text = "正在处理: ${processed + 1}/$total"
+                        binding.progressImport.progress = ((processed * 100) / total)
+                        binding.tvImportDetail.text = "提取PDF文本中..."
+                    }
+
+                    // Extract PDF text
+                    val text = PdfExtractor.extractText(requireContext(), uri)
+                    if (text == null || text.isEmpty()) {
+                        failed++
+                        processed++
+                        continue
+                    }
+
+                    val cleanText = PdfExtractor.cleanText(text)
+
+                    requireActivity().runOnUiThread {
+                        binding.tvImportDetail.text = "AI分析中... (${cleanText.length}字符)"
+                    }
+
+                    // Extract name from filename or PDF content
+                    val fileName = getFileNameFromUri(uri)
+                    val candidateName = extractNameFromFileName(fileName)
+
+                    // Generate AI profile
+                    val profile = generateCandidateProfile(cleanText)
+
+                    if (profile != null) {
+                        // Save to database
+                        db.candidateDao().insert(
+                            CandidateEntity(
+                                name = candidateName,
+                                email = "",
+                                phone = "",
+                                resume = profile
+                            )
+                        )
+                        success++
+                    } else {
+                        failed++
+                    }
+
+                } catch (e: Exception) {
+                    failed++
+                }
+                processed++
+            }
+
+            requireActivity().runOnUiThread {
+                binding.tvImportStatus.text = "导入完成!"
+                binding.progressImport.progress = 100
+                binding.tvImportDetail.text = "成功: $success, 失败: $failed"
+                binding.btnBatchImport.isEnabled = true
+
+                Toast.makeText(
+                    requireContext(),
+                    "批量导入完成! 成功: $success, 失败: $failed",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                // Hide progress card after delay
+                binding.root.postDelayed({
+                    binding.cardImportProgress.visibility = View.GONE
+                    loadCandidates()
+                }, 3000)
+            }
+        }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String {
+        var name = "未知"
+        requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex >= 0) {
+                name = cursor.getString(nameIndex)
+            }
+        }
+        return name
+    }
+
+    private fun extractNameFromFileName(fileName: String): String {
+        // Try to extract name from patterns like "姓名 6年.pdf" or "[姓名]_上海"
+        // Remove file extension
+        val nameWithoutExt = fileName.substringBeforeLast(".")
+        // Try to find Chinese name pattern (usually at the end before years)
+        val match = Regex("""[\u4e00-\u9fa5]+""").findAll(nameWithoutExt).lastOrNull()
+        return match?.value ?: "候选人_${System.currentTimeMillis() % 10000}"
+    }
+
+    private suspend fun generateCandidateProfile(resumeText: String): String? {
+        val prompt = buildString {
+            append("请分析以下简历，生成结构化候选人画像:\n\n")
+            append("简历内容:\n$resumeText\n\n")
+            append("请按以下格式输出:\n")
+            append("【基本信息】\n")
+            append("姓名: (从简历中提取)\n")
+            append("联系方式: (如有)\n\n")
+            append("【教育背景】\n")
+            append("- 学校, 学历, 专业, 时间\n\n")
+            append("【工作经历】\n")
+            append("- 公司, 职位, 时间, 主要职责\n\n")
+            append("【技能清单】\n")
+            append("- 技术技能\n")
+            append("- 软技能\n\n")
+            append("【项目经验】\n")
+            append("- 项目名称, 角色, 技术栈, 成果\n\n")
+            append("【证书培训】\n")
+            append("- 证书名称, 获得时间\n\n")
+            append("【自我评价】\n")
+            append("- 职业目标, 个人优势")
+        }
+
+        return llmService.generate(prompt, maxTokens = 800)
     }
 
     private fun loadCandidates() {
