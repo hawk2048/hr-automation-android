@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.hiringai.mobile.R
 import com.hiringai.mobile.databinding.FragmentSettingsBinding
+import com.hiringai.mobile.ml.DeviceCapabilityDetector
 import com.hiringai.mobile.ml.LocalEmbeddingService
 import com.hiringai.mobile.ml.LocalLLMService
 import kotlinx.coroutines.launch
@@ -22,6 +23,7 @@ class SettingsFragment : Fragment() {
 
     private lateinit var llmService: LocalLLMService
     private lateinit var embeddingService: LocalEmbeddingService
+    private lateinit var deviceDetector: DeviceCapabilityDetector
     private lateinit var prefs: SharedPreferences
 
     // Track selected models
@@ -42,9 +44,11 @@ class SettingsFragment : Fragment() {
 
         llmService = LocalLLMService.getInstance(requireContext())
         embeddingService = LocalEmbeddingService.getInstance(requireContext())
+        deviceDetector = DeviceCapabilityDetector(requireContext())
         prefs = requireContext().getSharedPreferences("hra_settings", 0)
 
         setupInferenceMode()
+        setupDeviceDetection()
         setupLLMModelSelector()
         setupEmbeddingModelSelector()
         setupOllamaConfig()
@@ -79,6 +83,43 @@ class SettingsFragment : Fragment() {
         binding.cardLocalModel.visibility = if (isLocal) View.VISIBLE else View.GONE
         binding.cardOllamaConfig.visibility = if (isLocal) View.GONE else View.VISIBLE
         binding.cardEmbeddingModel.visibility = if (isLocal) View.VISIBLE else View.GONE
+    }
+
+    private fun setupDeviceDetection() {
+        binding.btnDetectDevice.setOnClickListener {
+            detectDeviceCapabilities()
+        }
+    }
+
+    private fun detectDeviceCapabilities() {
+        binding.btnDetectDevice.isEnabled = false
+        binding.btnDetectDevice.text = "检测中..."
+
+        lifecycleScope.launch {
+            val capabilities = deviceDetector.detectCapabilities()
+
+            requireActivity().runOnUiThread {
+                // Show device info
+                binding.tvDeviceInfo.text = deviceDetector.getDeviceSummary(capabilities)
+
+                // Show recommendations
+                val recommendations = deviceDetector.recommendModels(capabilities)
+                val recText = buildString {
+                    append("\n📋 模型推荐:\n")
+                    recommendations.forEach { rec ->
+                        val icon = if (rec.isRecommended) "✅" else "⚪"
+                        val status = if (rec.isRecommended) "推荐" else "可选"
+                        append("  $icon ${rec.modelName} ($status)\n")
+                        append("      原因: ${rec.reason}\n")
+                    }
+                }
+                binding.tvModelRecommendation.text = recText
+                binding.tvModelRecommendation.visibility = View.VISIBLE
+
+                binding.btnDetectDevice.isEnabled = true
+                binding.btnDetectDevice.text = "重新检测"
+            }
+        }
     }
 
     private fun setupLLMModelSelector() {
