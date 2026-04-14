@@ -125,6 +125,69 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Real-time Status Area -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="实时状态"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary" />
+
+                    <TextView
+                        android:id="@+id/tv_status_area"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="100dp"
+                        android:layout_marginTop="8dp"
+                        android:padding="12dp"
+                        android:background="@color/gray_light"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:text="等待操作..." />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp">
+
+                        <Button
+                            android:id="@+id/btn_refresh_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="刷新状态"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                        <Button
+                            android:id="@+id/btn_clear_output"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="清空输出"
+                            android:visibility="gone"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Local LLM Model -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_local_model"

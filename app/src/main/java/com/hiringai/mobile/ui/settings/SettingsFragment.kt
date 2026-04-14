@@ -49,6 +49,7 @@ class SettingsFragment : Fragment() {
 
         setupInferenceMode()
         setupDeviceDetection()
+        setupStatusArea()
         setupLLMModelSelector()
         setupEmbeddingModelSelector()
         setupOllamaConfig()
@@ -89,6 +90,49 @@ class SettingsFragment : Fragment() {
         binding.btnDetectDevice.setOnClickListener {
             detectDeviceCapabilities()
         }
+    }
+
+    private fun setupStatusArea() {
+        updateStatusArea()
+        binding.btnRefreshStatus.setOnClickListener {
+            updateStatusArea()
+        }
+        binding.btnClearOutput.setOnClickListener {
+            updateStatusArea()
+            binding.btnClearOutput.visibility = View.GONE
+        }
+    }
+
+    private fun updateStatusArea() {
+        val sb = StringBuilder()
+        val activityManager = requireContext().getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memInfo)
+
+        val totalRamGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
+        val availRamGB = memInfo.availMem / (1024.0 * 1024.0 * 1024.0)
+        val usedRamGB = totalRamGB - availRamGB
+        val usedPercent = ((usedRamGB / totalRamGB) * 100).toInt()
+
+        sb.append("📊 系统状态:\n")
+        sb.append("  内存: %.1fGB / %.1fGB (已用 %d%%)\n".format(usedRamGB, totalRamGB, usedPercent))
+
+        val processor = java.lang.Runtime.getRuntime()
+        sb.append("  CPU核心: %d\n".format(processor.availableProcessors()))
+
+        sb.append("\n🤖 模型状态:\n")
+        if (llmService.isModelLoaded) {
+            sb.append("  LLM: ✓ 已加载 (${llmService.getLoadedModelName()})\n")
+        } else {
+            sb.append("  LLM: ✗ 未加载\n")
+        }
+        if (embeddingService.loaded) {
+            sb.append("  Embedding: ✓ 已加载\n")
+        } else {
+            sb.append("  Embedding: ✗ 未加载\n")
+        }
+
+        binding.tvStatusArea.text = sb.toString()
     }
 
     private fun detectDeviceCapabilities() {
@@ -276,7 +320,12 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnTestModel.isEnabled = false
-        binding.btnTestModel.text = "测试中..."
+        binding.btnTestModel.text = "生成中..."
+        binding.btnClearOutput.visibility = View.VISIBLE
+
+        // Show generating status in status area
+        val currentStatus = binding.tvStatusArea.text.toString()
+        binding.tvStatusArea.text = currentStatus + "\n🤖 LLM 生成中...\n  输入: 请用一句话介绍你自己\n  输出: "
 
         lifecycleScope.launch {
             val testPrompt = "请用一句话介绍你自己"
@@ -288,8 +337,13 @@ class SettingsFragment : Fragment() {
                 binding.btnTestModel.text = "测试模型效果"
 
                 if (result != null) {
-                    showTestResult(result)
+                    // Show result in status area
+                    val newStatus = currentStatus + "\n🤖 LLM 生成完成!\n  输入: 请用一句话介绍你自己\n  输出: $result\n\n  ✅ 点击\"清空输出\"清除结果"
+                    binding.tvStatusArea.text = newStatus
+                    binding.tvStatusArea.append("\n\n📋 完整输出:\n$result")
                 } else {
+                    val errorStatus = currentStatus + "\n⚠️ LLM 生成失败，请检查模型是否正确加载"
+                    binding.tvStatusArea.text = errorStatus
                     Toast.makeText(requireContext(), "模型生成失败", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -297,16 +351,9 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showTestResult(result: String) {
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("模型测试结果")
-            .setMessage("输入: 请用一句话介绍你自己\n\n输出: $result")
-            .setPositiveButton("确定", null)
-            .setNeutralButton("复制") { _, _ ->
-                val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("test_result", result))
-                Toast.makeText(requireContext(), "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-            }
-            .show()
+        // Show in status area instead of dialog
+        updateStatusArea()
+        binding.tvStatusArea.append("\n\n🤖 模型测试结果:\n输入: 请用一句话介绍你自己\n\n输出: $result")
     }
 
     private fun downloadLLMModel(config: LocalLLMService.ModelConfig) {
@@ -402,6 +449,7 @@ class SettingsFragment : Fragment() {
     private fun updateModelStatus() {
         setupLLMModelSelector()
         setupEmbeddingModelSelector()
+        updateStatusArea()
 
         val llmDownloaded = LocalLLMService.AVAILABLE_MODELS.any { llmService.isModelDownloaded(it.name) }
         val embDownloaded = LocalEmbeddingService.AVAILABLE_MODELS.any { embeddingService.isModelDownloaded(it.name) }
