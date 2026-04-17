@@ -352,6 +352,7 @@ class LocalEmbeddingService(private val context: Context) {
             val output = session?.run(inputs) ?: return@withContext null
 
             // Extract [CLS] token embedding (first token, index 0)
+            @Suppress("UNCHECKED_CAST")
             val lastHiddenState = output.get(0).value as Array<Array<FloatArray>>
             val clsEmbedding = lastHiddenState[0][0]  // [1, seqLen, dim] → [0][0] = CLS
 

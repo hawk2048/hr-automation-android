@@ -1,10 +1,13 @@
 package com.hiringai.mobile.ml.benchmark
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -626,6 +629,13 @@ object TestAudioResources {
         durationSec: Float,
         sampleRate: Int = 16000
     ): ShortArray? {
+        // Check RECORD_AUDIO permission
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "RECORD_AUDIO permission not granted")
+            return null
+        }
+
         val channelConfig = AudioFormat.CHANNEL_IN_MONO
         val audioFormat = AudioFormat.ENCODING_PCM_16BIT
         val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
@@ -635,6 +645,7 @@ object TestAudioResources {
             return null
         }
 
+        @Suppress("MissingPermission") // Permission checked above
         val audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             sampleRate,

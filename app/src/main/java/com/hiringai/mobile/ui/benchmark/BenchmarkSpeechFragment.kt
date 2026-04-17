@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -58,9 +59,19 @@ class BenchmarkSpeechFragment : Fragment() {
         TTS, STT, VAD, ALL
     }
 
+    // Permission launcher using modern API
+    private val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startRecordingInternal()
+        } else {
+            Toast.makeText(requireContext(), "需要录音权限才能录制音频", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     companion object {
         fun newInstance() = BenchmarkSpeechFragment()
-        private const val REQUEST_RECORD_AUDIO_PERMISSION = 1001
     }
 
     override fun onCreateView(
@@ -145,10 +156,14 @@ class BenchmarkSpeechFragment : Fragment() {
         // 检查录音权限
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
+            recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             return
         }
 
+        startRecordingInternal()
+    }
+
+    private fun startRecordingInternal() {
         try {
             audioRecorder = TestAudioGenerator.AudioRecorder(requireContext())
             val success = audioRecorder?.startRecording() ?: false

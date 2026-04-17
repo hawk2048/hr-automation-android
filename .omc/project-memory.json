@@ -90,8 +90,8 @@
   "hotPaths": [
     {
       "path": "app/src/main/java/com/hiringai/mobile/ml/LocalImageModelService.kt",
-      "accessCount": 27,
-      "lastAccessed": 1776399184413,
+      "accessCount": 32,
+      "lastAccessed": 1776403343275,
       "type": "file"
     },
     {
@@ -143,6 +143,12 @@
       "type": "file"
     },
     {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/LocalEmbeddingService.kt",
+      "accessCount": 10,
+      "lastAccessed": 1776403341140,
+      "type": "file"
+    },
+    {
       "path": "app/src/main/res/menu/bottom_navigation.xml",
       "accessCount": 8,
       "lastAccessed": 1776397012447,
@@ -158,12 +164,6 @@
       "path": "app/src/main/java/com/hiringai/mobile/ml/benchmark/LLMBenchmarkRunner.kt",
       "accessCount": 7,
       "lastAccessed": 1776396127007,
-      "type": "file"
-    },
-    {
-      "path": "app/src/main/java/com/hiringai/mobile/ml/LocalEmbeddingService.kt",
-      "accessCount": 7,
-      "lastAccessed": 1776399308812,
       "type": "file"
     },
     {

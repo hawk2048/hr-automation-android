@@ -3,11 +3,14 @@ package com.hiringai.mobile.ml.speech
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.hiringai.mobile.SafeNativeLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -399,6 +402,7 @@ class LocalSpeechService private constructor(private val context: Context) {
             val output = currentSession.run(inputs)
 
             // 4. 解码输出
+            @Suppress("UNCHECKED_CAST")
             val outputTensor = output.get(0).value as Array<LongArray>
             val tokens = outputTensor[0]
 
@@ -820,8 +824,17 @@ class LocalSpeechService private constructor(private val context: Context) {
      * 录制音频
      */
     fun startRecording(sampleRate: Int = WHISPER_SAMPLE_RATE): AudioRecorder? {
+        // Check RECORD_AUDIO permission before creating AudioRecord
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "RECORD_AUDIO permission not granted")
+            return null
+        }
         return try {
             AudioRecorder(sampleRate)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException: RECORD_AUDIO permission denied", e)
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start recording", e)
             null
@@ -838,6 +851,7 @@ class LocalSpeechService private constructor(private val context: Context) {
             AudioFormat.ENCODING_PCM_16BIT
         )
 
+        @Suppress("MissingPermission") // Permission checked in startRecording()
         private val audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             sampleRate,

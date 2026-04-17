@@ -621,6 +621,7 @@ class LocalImageModelService(private val context: Context) {
     private fun extractClassificationResult(output: OrtSession.Result?): Pair<String, Float>? {
         if (output == null) return null
         try {
+            @Suppress("UNCHECKED_CAST")
             val outputArray = output.get(0).value as Array<FloatArray>
             val probabilities = outputArray[0]
 
@@ -657,6 +658,7 @@ class LocalImageModelService(private val context: Context) {
     private fun extractVisionFeatures(output: OrtSession.Result?): FloatArray? {
         if (output == null) return null
         try {
+            @Suppress("UNCHECKED_CAST")
             val outputArray = output.get(0).value as Array<Array<FloatArray>>
             // Return flattened features
             val batch0 = outputArray[0]
