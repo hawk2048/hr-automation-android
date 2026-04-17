@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
     id 'com.google.devtools.ksp'
 }
 
@@ -135,6 +136,12 @@ dependencies {
 
     // PDF parsing for resume extraction
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
+
+    // Charts
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+
+    // Serialization
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2'
 
     // Testing
     testImplementation 'junit:junit:4.13.2'
