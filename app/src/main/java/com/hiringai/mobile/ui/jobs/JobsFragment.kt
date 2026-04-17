@@ -5,16 +5,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.hiringai.mobile.R
 import com.hiringai.mobile.data.local.AppDatabase
 import com.hiringai.mobile.data.local.entity.JobEntity
+import com.hiringai.mobile.data.repository.JobRepository
 import com.hiringai.mobile.databinding.FragmentJobsBinding
+import com.hiringai.mobile.ml.LocalLLMService
 import kotlinx.coroutines.launch
 
 class JobsFragment : Fragment() {
@@ -22,7 +29,13 @@ class JobsFragment : Fragment() {
     private var _binding: FragmentJobsBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var db: AppDatabase
+    private val viewModel: JobsViewModel by viewModels {
+        val db = AppDatabase.getInstance(requireContext())
+        val repository = JobRepository(db.jobDao())
+        val llmService = LocalLLMService.getInstance(requireContext())
+        JobsViewModel.Factory(repository, llmService)
+    }
+
     private lateinit var adapter: JobAdapter
 
     override fun onCreateView(
@@ -37,16 +50,13 @@ class JobsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        db = AppDatabase.getInstance(requireContext())
-
         setupRecyclerView()
         setupFab()
-        loadJobs()
+        observeUiState()
     }
 
     private fun setupRecyclerView() {
         adapter = JobAdapter { job ->
-            // Handle item click (e.g., show details or edit)
             showJobDetails(job)
         }
         binding.rvJobs.layoutManager = LinearLayoutManager(requireContext())
@@ -59,22 +69,27 @@ class JobsFragment : Fragment() {
         }
     }
 
-    private fun loadJobs() {
-        binding.progressBar.visibility = View.VISIBLE
+    private fun observeUiState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    // Loading state
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
 
-        lifecycleScope.launch {
-            val jobs = db.jobDao().getAll()
+                    // Error handling
+                    state.error?.let { error ->
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+                    }
 
-            requireActivity().runOnUiThread {
-                binding.progressBar.visibility = View.GONE
-
-                if (jobs.isEmpty()) {
-                    binding.tvEmpty.visibility = View.VISIBLE
-                    binding.rvJobs.visibility = View.GONE
-                } else {
-                    binding.tvEmpty.visibility = View.GONE
-                    binding.rvJobs.visibility = View.VISIBLE
-                    adapter.submitList(jobs)
+                    // Data display
+                    if (state.jobs.isEmpty() && !state.isLoading) {
+                        binding.tvEmpty.visibility = View.VISIBLE
+                        binding.rvJobs.visibility = View.GONE
+                    } else {
+                        binding.tvEmpty.visibility = View.GONE
+                        binding.rvJobs.visibility = View.VISIBLE
+                        adapter.submitList(state.jobs)
+                    }
                 }
             }
         }
@@ -109,43 +124,63 @@ class JobsFragment : Fragment() {
                     return@setPositiveButton
                 }
 
-                addJob(title, requirements)
+                viewModel.addJob(title, requirements)
+                Toast.makeText(requireContext(), "职位已添加", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("取消", null)
             .show()
     }
 
-    private fun addJob(title: String, requirements: String) {
-        lifecycleScope.launch {
-            db.jobDao().insert(JobEntity(title = title, requirements = requirements))
-
-            requireActivity().runOnUiThread {
-                Toast.makeText(requireContext(), "职位已添加", Toast.LENGTH_SHORT).show()
-                loadJobs()
-            }
-        }
-    }
-
     private fun showJobDetails(job: JobEntity) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(job.title)
-            .setMessage("要求: ${job.requirements}\n\n状态: ${job.status}")
+        val dialogView = layoutInflater.inflate(R.layout.dialog_job_details, null)
+
+        val tvTitle = dialogView.findViewById<android.widget.TextView>(R.id.tv_detail_title)
+        val tvRequirements = dialogView.findViewById<android.widget.TextView>(R.id.tv_detail_requirements)
+        val tvStatus = dialogView.findViewById<android.widget.TextView>(R.id.tv_detail_status)
+        val tvProfile = dialogView.findViewById<android.widget.TextView>(R.id.tv_detail_profile)
+        val btnGenerateProfile = dialogView.findViewById<Button>(R.id.btn_generate_profile)
+        val progressBar = dialogView.findViewById<ProgressBar>(R.id.progress_profile)
+
+        tvTitle.text = job.title
+        tvRequirements.text = "要求: ${job.requirements}"
+        tvStatus.text = "状态: ${when (job.status) {
+            "active" -> "招聘中"
+            "closed" -> "已关闭"
+            else -> job.status
+        }}"
+
+        // 显示已有画像
+        if (job.profile.isNotEmpty()) {
+            tvProfile.visibility = View.VISIBLE
+            tvProfile.text = "职位画像:\n${job.profile}"
+        } else {
+            tvProfile.visibility = View.GONE
+        }
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("职位详情")
+            .setView(dialogView)
             .setPositiveButton("确定", null)
             .setNegativeButton("删除") { _, _ ->
-                deleteJob(job)
-            }
-            .show()
-    }
-
-    private fun deleteJob(job: JobEntity) {
-        lifecycleScope.launch {
-            db.jobDao().delete(job)
-
-            requireActivity().runOnUiThread {
+                viewModel.deleteJob(job)
                 Toast.makeText(requireContext(), "职位已删除", Toast.LENGTH_SHORT).show()
-                loadJobs()
+            }
+            .create()
+
+        btnGenerateProfile.setOnClickListener {
+            btnGenerateProfile.isEnabled = false
+            progressBar.visibility = View.VISIBLE
+
+            viewModel.generateProfile(job) { profile ->
+                progressBar.visibility = View.GONE
+                btnGenerateProfile.isEnabled = true
+                tvProfile.visibility = View.VISIBLE
+                tvProfile.text = "职位画像:\n$profile"
+                Toast.makeText(requireContext(), "画像生成成功", Toast.LENGTH_SHORT).show()
             }
         }
+
+        dialog.show()
     }
 
     override fun onDestroyView() {

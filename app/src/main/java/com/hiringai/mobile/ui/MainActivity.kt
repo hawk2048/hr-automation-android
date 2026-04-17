@@ -14,7 +14,9 @@ import com.hiringai.mobile.databinding.ActivityMainBinding
 import com.hiringai.mobile.ui.jobs.JobsFragment
 import com.hiringai.mobile.ui.candidates.CandidatesFragment
 import com.hiringai.mobile.ui.matches.MatchesFragment
+import com.hiringai.mobile.ui.matching.MatchingCenterFragment
 import com.hiringai.mobile.ui.settings.SettingsFragment
+import com.hiringai.mobile.ui.benchmark.BenchmarkDashboardFragment
 
 class MainActivity : AppCompatActivity() {
     
@@ -89,7 +91,8 @@ class MainActivity : AppCompatActivity() {
             val fragment: Fragment = when (item.itemId) {
                 R.id.nav_jobs -> JobsFragment()
                 R.id.nav_candidates -> CandidatesFragment()
-                R.id.nav_matches -> MatchesFragment()
+                R.id.nav_matching_center -> MatchingCenterFragment()
+                R.id.nav_benchmark -> BenchmarkDashboardFragment()
                 R.id.nav_settings -> SettingsFragment()
                 else -> return@setOnItemSelectedListener false
             }

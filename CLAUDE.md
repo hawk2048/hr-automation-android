@@ -1,0 +1,116 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**HRAutomation Android** — 本地 LLM + Embedding 驱动的智能招聘系统 Android 客户端。
+
+- **Primary Language**: Kotlin 2.0.21
+- **Min SDK**: Android 8.0 (API 26)
+- **Target SDK**: Android 15 (API 35)
+- **Build System**: Gradle 8.4 + AGP 8.9.1
+- **Architecture**: Single Activity + Multiple Fragments with ViewBinding
+
+## Build Commands
+
+```bash
+# Debug APK
+./gradlew assembleDebug
+
+# Release APK (per-ABI splits for MIUI compatibility)
+./gradlew assembleRelease
+
+# Run unit tests
+./gradlew test
+
+# Run lint checks
+./gradlew lint
+
+# Install via ADB
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+## Architecture
+
+### UI Layer
+- `MainActivity` — Single activity with BottomNavigationView
+- 4 main tabs: Jobs, Candidates, Matching Center, Settings
+- Fragments use ViewBinding (not Compose)
+- RecyclerView adapters for list displays
+
+### Data Layer
+- **Room Database** (`AppDatabase`) — Singleton, thread-safe
+- **Entities**: `JobEntity`, `CandidateEntity`, `MatchEntity`, `ApplicationEntity`
+- **DAOs**: `JobDao`, `CandidateDao`, `MatchDao`, `ApplicationDao`
+
+### ML Layer
+- **LocalLLMService** — Singleton for LLM inference
+  - Device-side: llama.cpp via `llama-kotlin-android` (GGUF models)
+  - Remote: Ollama HTTP API
+  - Models stored in `app/files/models/`
+- **LocalEmbeddingService** — ONNX Runtime for vector embedding
+  - Model: all-MiniLM-L6-v2 (~90MB)
+  - Stored in `app/files/embedding/`
+
+### Native Library Safety
+- `SafeNativeLoader` checks device compatibility before loading native libs
+- Crash detection prevents re-loading incompatible native libraries
+- See `DeviceCapabilityDetector.kt` for device requirements
+
+## Key Patterns
+
+### Singleton Services
+```kotlin
+LocalLLMService.getInstance(context)
+LocalEmbeddingService.getInstance(context)
+AppDatabase.getInstance(context)
+```
+
+### Database Access
+```kotlin
+val db = AppDatabase.getInstance(context)
+val jobs = db.jobDao().getAllJobs()
+```
+
+### ML Inference Priority
+1. Local llama.cpp model (if loaded)
+2. Remote Ollama server (fallback)
+3. Return empty/error response if neither available
+
+## Common Development Tasks
+
+### Adding a new entity
+1. Create entity class in `data/local/entity/Entities.kt`
+2. Add to `@Database(entities = [...])` in `AppDatabase.kt`
+3. Create DAO in `data/local/dao/Daos.kt`
+4. Add abstract method to `AppDatabase.kt`
+
+### Adding ML model
+Add to `LocalLLMService.AVAILABLE_MODELS` list:
+```kotlin
+ModelConfig(
+    name = "ModelName-Q4_0",
+    url = "$HF_MIRROR/owner/repo/resolve/main/model.gguf",
+    size = 394_774_816,
+    requiredRAM = 1, // GB
+    contextSize = 2048,
+    template = "chatml", // prompt template
+    description = "..."
+)
+```
+
+### Testing ML features
+- Local model requires arm64-v8a or x86_64 ABI
+- NDK filters: `ndk { abiFilters 'arm64-v8a', 'x86_64' }`
+- Ollama requires network connectivity
+
+## File Locations
+
+| Component | Path |
+|-----------|------|
+| Database | `app/src/main/java/com/hiringai/mobile/data/local/` |
+| ML Services | `app/src/main/java/com/hiringai/mobile/ml/` |
+| UI Fragments | `app/src/main/java/com/hiringai/mobile/ui/` |
+| Layouts | `app/src/main/res/layout/` |
+| Strings/Colors | `app/src/main/res/values/` |

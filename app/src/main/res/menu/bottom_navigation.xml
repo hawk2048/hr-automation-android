@@ -9,9 +9,13 @@
         android:icon="@android:drawable/ic_menu_myplaces"
         android:title="@string/nav_candidates" />
     <item
-        android:id="@+id/nav_matches"
+        android:id="@+id/nav_matching_center"
         android:icon="@android:drawable/ic_menu_search"
-        android:title="@string/nav_matches" />
+        android:title="@string/nav_matching" />
+    <item
+        android:id="@+id/nav_benchmark"
+        android:icon="@android:drawable/ic_menu_info_details"
+        android:title="基准测试" />
     <item
         android:id="@+id/nav_settings"
         android:icon="@android:drawable/ic_menu_preferences"
