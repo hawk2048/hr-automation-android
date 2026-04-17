@@ -352,9 +352,17 @@
                 android:id="@+id/btn_test_model"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="8dp"
                 android:text="测试模型效果"
                 android:visibility="gone" />
+
+            <!-- Benchmark Button -->
+            <Button
+                android:id="@+id/btn_benchmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="LLM 基准测试" />
 
             <!-- Ollama Config -->
             <com.google.android.material.card.MaterialCardView

@@ -62,7 +62,7 @@
                         android:layout_marginTop="8dp"
                         android:text="测试所有已下载的语音、图像、LLM模型"
                         android:textColor="@android:color/white"
-                        android:textAlpha="0.9" />
+                        android:alpha="0.9" />
 
                     <Button
                         android:id="@+id/btn_run_all_benchmarks"

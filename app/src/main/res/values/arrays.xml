@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default values for RangeSliders -->
+    <array name="default_match_score_values">
+        <item>0</item>
+        <item>100</item>
+    </array>
+    <array name="default_experience_values">
+        <item>0</item>
+        <item>20</item>
+    </array>
+
+    <!-- Education level options -->
+    <string-array name="education_options">
+        <item>不限</item>
+        <item>本科</item>
+        <item>硕士</item>
+        <item>博士</item>
+    </string-array>
+
+    <!-- Education level values (corresponding to codes) -->
+    <string-array name="education_values">
+        <item>all</item>
+        <item>bachelor</item>
+        <item>master</item>
+        <item>doctor</item>
+    </string-array>
+
+    <!-- Salary range options -->
+    <string-array name="salary_options">
+        <item>不限</item>
+        <item>10-20K</item>
+        <item>20-40K</item>
+        <item>40-60K</item>
+        <item>60K+</item>
+    </string-array>
+
+    <!-- Salary range values (corresponding to codes) -->
+    <string-array name="salary_values">
+        <item>all</item>
+        <item>10k20k</item>
+        <item>20k40k</item>
+        <item>40k60k</item>
+        <item>60kup</item>
+    </string-array>
+
+    <!-- Recent active options -->
+    <string-array name="recent_active_options">
+        <item>不限</item>
+        <item>7天内</item>
+        <item>30天内</item>
+        <item>90天内</item>
+    </string-array>
+
+    <!-- Recent active values (days, 0 = unlimited) -->
+    <string-array name="recent_active_values">
+        <item>0</item>
+        <item>7</item>
+        <item>30</item>
+        <item>90</item>
+    </string-array>
+</resources>

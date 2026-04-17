@@ -1,26 +1,49 @@
 package com.hiringai.mobile.ui.benchmark
 
+import android.Manifest
+import android.app.Activity
+import android.content.ContentValues
+import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hiringai.mobile.R
 import com.hiringai.mobile.databinding.FragmentBenchmarkImageBinding
 import com.hiringai.mobile.ml.LocalImageModelService
+import com.hiringai.mobile.ml.benchmark.TestImageGenerator
+import com.hiringai.mobile.ml.benchmark.TestImageInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 /**
  * 图像模型基准测试 Fragment
+ *
+ * 支持功能:
+ * - 从相册选择图像
+ * - 拍照获取图像
+ * - 使用内置测试图像
+ * - 模型加载与推理测试
+ * - 性能指标测量
  *
  * 测试指标:
  * - 模型加载时间
@@ -36,8 +59,16 @@ class BenchmarkImageFragment : Fragment() {
     private lateinit var imageModelService: LocalImageModelService
     private lateinit var prefs: SharedPreferences
 
+    companion object {
+        fun newInstance() = BenchmarkImageFragment()
+    }
+
     private var selectedModelIndex = 0
     private val benchmarkResults = mutableListOf<BenchmarkResult>()
+
+    // 当前选中的图像
+    private var selectedBitmap: Bitmap? = null
+    private var selectedImageName: String = ""
 
     data class BenchmarkResult(
         val modelName: String,
@@ -46,8 +77,43 @@ class BenchmarkImageFragment : Fragment() {
         val inferenceTimeMs: Long,
         val memoryMB: Long,
         val throughput: Float,
-        val iterations: Int
+        val iterations: Int,
+        val recognitionResult: String? = null
     )
+
+    // 相机拍照 URI
+    private var cameraImageUri: Uri? = null
+
+    // 权限请求
+    private val requestPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (!allGranted) {
+            Toast.makeText(requireContext(), "需要权限才能使用此功能", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 选择图像
+    private val selectImageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val uri = result.data?.data
+            uri?.let { loadImageFromUri(it) }
+        }
+    }
+
+    // 拍照
+    private val captureImageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            cameraImageUri?.let { uri ->
+                loadImageFromUri(uri)
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,8 +131,162 @@ class BenchmarkImageFragment : Fragment() {
         prefs = requireContext().getSharedPreferences("benchmark_settings", 0)
 
         setupModelSelector()
+        setupImageSelectionButtons()
         setupTestButtons()
         updateStatus()
+    }
+
+    private fun setupImageSelectionButtons() {
+        binding.btnSelectImage.setOnClickListener {
+            checkAndRequestPermissions()
+            selectImageFromGallery()
+        }
+
+        binding.btnCaptureImage.setOnClickListener {
+            checkAndRequestPermissions()
+            captureImage()
+        }
+
+        binding.btnUseTestImage.setOnClickListener {
+            loadBuiltInTestImage()
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        val permissions = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES)
+                != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.CAMERA)
+        }
+
+        if (permissions.isNotEmpty()) {
+            requestPermissions.launch(permissions.toTypedArray())
+        }
+    }
+
+    private fun selectImageFromGallery() {
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        intent.type = "image/*"
+        selectImageLauncher.launch(Intent.createChooser(intent, "选择测试图像"))
+    }
+
+    private fun captureImage() {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "benchmark_test_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+        }
+
+        cameraImageUri = requireContext().contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
+        )
+
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri)
+        captureImageLauncher.launch(intent)
+    }
+
+    private fun loadBuiltInTestImage() {
+        // 获取所有可用的测试图像
+        val testImages = TestImageGenerator.getAvailableTestImages(requireContext())
+        val displayNames = testImages.map { "${it.displayName} - ${it.description}" }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("选择测试图像")
+            .setItems(displayNames.toTypedArray()) { dialog, which ->
+                val selectedInfo = testImages[which]
+                loadTestImage(selectedInfo)
+                dialog.dismiss()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun loadTestImage(info: TestImageInfo) {
+        lifecycleScope.launch {
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    TestImageGenerator.loadTestImage(requireContext(), info)
+                }
+
+                if (bitmap != null) {
+                    selectedBitmap = bitmap
+                    selectedImageName = info.displayName
+
+                    displaySelectedImage(bitmap)
+
+                    binding.tvImageInfo.text = "图像: ${info.displayName}\n尺寸: ${info.width}x${info.height}\n类型: ${info.type.name}"
+                    binding.tvImageInfo.visibility = View.VISIBLE
+
+                    Toast.makeText(requireContext(), "已加载: ${info.displayName}", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "加载测试图像失败", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "加载测试图像失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun loadImageFromUri(uri: Uri) {
+        try {
+            val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
+            inputStream?.use {
+                val bitmap = BitmapFactory.decodeStream(it)
+                if (bitmap != null) {
+                    selectedBitmap = bitmap
+                    selectedImageName = getFileName(uri) ?: "未知图像"
+
+                    // 显示图像信息
+                    val width = bitmap.width
+                    val height = bitmap.height
+                    val sizeKB = bitmap.byteCount / 1024
+
+                    displaySelectedImage(bitmap)
+
+                    binding.tvImageInfo.text = "图像: $selectedImageName\n尺寸: ${width}x${height}\n大小: ${sizeKB}KB"
+                    binding.tvImageInfo.visibility = View.VISIBLE
+
+                    Toast.makeText(requireContext(), "已加载图像: $selectedImageName", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "加载图像失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun displaySelectedImage(bitmap: Bitmap) {
+        binding.ivSelectedImage.setImageBitmap(bitmap)
+        binding.ivSelectedImage.visibility = View.VISIBLE
+    }
+
+    private fun getFileName(uri: Uri): String? {
+        var name: String? = null
+        val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                if (nameIndex >= 0) {
+                    name = it.getString(nameIndex)
+                }
+            }
+        }
+        return name
     }
 
     private fun setupModelSelector() {
@@ -184,6 +404,9 @@ class BenchmarkImageFragment : Fragment() {
             return
         }
 
+        // 使用选中的图像或创建测试图像
+        val testBitmap = selectedBitmap ?: createTestBitmap(config.inputSize.first, config.inputSize.second)
+
         binding.btnRunBenchmark.isEnabled = false
         binding.btnRunBenchmark.text = "测试中..."
         binding.tvBenchmarkStatus.text = "开始基准测试..."
@@ -191,7 +414,7 @@ class BenchmarkImageFragment : Fragment() {
         val iterations = binding.etIterations.text.toString().toIntOrNull() ?: 10
 
         lifecycleScope.launch {
-            val result = performBenchmark(config, iterations)
+            val result = performBenchmark(config, testBitmap, iterations)
 
             withContext(Dispatchers.Main) {
                 benchmarkResults.add(result)
@@ -204,6 +427,7 @@ class BenchmarkImageFragment : Fragment() {
 
     private suspend fun performBenchmark(
         config: LocalImageModelService.ImageModelConfig,
+        testBitmap: Bitmap,
         iterations: Int
     ): BenchmarkResult = withContext(Dispatchers.IO) {
         // 1. Measure model loading time
@@ -226,23 +450,29 @@ class BenchmarkImageFragment : Fragment() {
         // 2. Get memory usage after loading
         val memoryMB = getMemoryUsageMB()
 
-        // 3. Create a dummy test image
-        val testBitmap = createTestBitmap(config.inputSize.first, config.inputSize.second)
+        // 3. Resize bitmap to model input size
+        val resizedBitmap = Bitmap.createScaledBitmap(
+            testBitmap,
+            config.inputSize.first,
+            config.inputSize.second,
+            true
+        )
 
         // 4. Run inference iterations and measure average time
         val inferenceTimes = mutableListOf<Long>()
+        var recognitionResult: String? = null
 
         // Warmup
         repeat(2) {
             when (config.type) {
                 LocalImageModelService.ModelType.CLASSIFICATION -> {
-                    imageModelService.classifyImage(testBitmap)
+                    imageModelService.classifyImage(resizedBitmap)
                 }
                 LocalImageModelService.ModelType.OCR -> {
-                    imageModelService.recognizeText(testBitmap)
+                    imageModelService.recognizeText(resizedBitmap)
                 }
                 LocalImageModelService.ModelType.VLM -> {
-                    imageModelService.encodeImage(testBitmap)
+                    imageModelService.encodeImage(resizedBitmap)
                 }
             }
         }
@@ -250,22 +480,30 @@ class BenchmarkImageFragment : Fragment() {
         // Timed iterations
         repeat(iterations) {
             val start = System.currentTimeMillis()
-            when (config.type) {
+            val result = when (config.type) {
                 LocalImageModelService.ModelType.CLASSIFICATION -> {
-                    imageModelService.classifyImage(testBitmap)
+                    val (label, confidence) = imageModelService.classifyImage(resizedBitmap) ?: null to 0f
+                    recognitionResult = "分类: $label (置信度: ${"%.2f".format(confidence)})"
+                    Unit
                 }
                 LocalImageModelService.ModelType.OCR -> {
-                    imageModelService.recognizeText(testBitmap)
+                    val text = imageModelService.recognizeText(resizedBitmap)
+                    recognitionResult = "OCR: $text"
+                    Unit
                 }
                 LocalImageModelService.ModelType.VLM -> {
-                    imageModelService.encodeImage(testBitmap)
+                    val features = imageModelService.encodeImage(resizedBitmap)
+                    recognitionResult = "特征维度: ${features?.size ?: 0}"
+                    Unit
                 }
             }
             val elapsed = System.currentTimeMillis() - start
             inferenceTimes.add(elapsed)
         }
 
-        testBitmap.recycle()
+        if (testBitmap != selectedBitmap) {
+            resizedBitmap.recycle()
+        }
 
         // Calculate metrics
         val avgInferenceMs = inferenceTimes.average().toLong()
@@ -278,7 +516,8 @@ class BenchmarkImageFragment : Fragment() {
             inferenceTimeMs = avgInferenceMs,
             memoryMB = memoryMB,
             throughput = throughput,
-            iterations = iterations
+            iterations = iterations,
+            recognitionResult = recognitionResult
         )
     }
 
@@ -314,9 +553,9 @@ class BenchmarkImageFragment : Fragment() {
         }
 
         val report = buildString {
-            appendLine("=" .repeat(50))
+            appendLine("=".repeat(50))
             appendLine("📊 ${result.modelName} 基准测试结果")
-            appendLine("=" .repeat(50))
+            appendLine("=".repeat(50))
             appendLine("模型类型: $typeStr")
             appendLine("测试次数: ${result.iterations}")
             appendLine()
@@ -326,6 +565,11 @@ class BenchmarkImageFragment : Fragment() {
             appendLine("  • 内存占用: ${result.memoryMB} MB")
             appendLine("  • 吞吐量: %.2f inferences/s".format(result.throughput))
             appendLine()
+            if (!result.recognitionResult.isNullOrEmpty()) {
+                appendLine("🔍 识别结果:")
+                appendLine("  ${result.recognitionResult}")
+                appendLine()
+            }
         }
 
         binding.tvBenchmarkStatus.text = report
@@ -345,7 +589,7 @@ class BenchmarkImageFragment : Fragment() {
 
         val report = generateReport()
 
-        // Save to Downloads folder
+        // Save to external files directory
         lifecycleScope.launch {
             try {
                 val file = File(requireContext().getExternalFilesDir(null), "image_benchmark_report.txt")
@@ -364,10 +608,10 @@ class BenchmarkImageFragment : Fragment() {
 
     private fun generateReport(): String {
         return buildString {
-            appendLine("=" .repeat(60))
+            appendLine("=".repeat(60))
             appendLine("图像模型基准测试报告")
             appendLine("生成时间: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
-            appendLine("=" .repeat(60))
+            appendLine("=".repeat(60))
             appendLine()
 
             // Summary
@@ -406,6 +650,9 @@ class BenchmarkImageFragment : Fragment() {
                 appendLine("  内存占用: ${result.memoryMB} MB")
                 appendLine("  吞吐量: %.2f inf/s".format(result.throughput))
                 appendLine("  测试迭代: ${result.iterations}")
+                if (!result.recognitionResult.isNullOrEmpty()) {
+                    appendLine("  识别结果: ${result.recognitionResult}")
+                }
             }
         }
     }

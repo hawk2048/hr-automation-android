@@ -33,7 +33,8 @@ class LocalLLMService private constructor(private val context: Context) {
         val size: Long,
         val requiredRAM: Int,
         val contextSize: Int = 2048,
-        val template: String = "chatml"
+        val template: String = "chatml",
+        val description: String = ""
     )
 
     companion object {
@@ -45,21 +46,100 @@ class LocalLLMService private constructor(private val context: Context) {
         private const val HF_MIRROR = "https://hf-mirror.com"
 
         val AVAILABLE_MODELS = listOf(
+            // ========== 轻量级 (<1GB RAM) ==========
             ModelConfig(
                 name = "Qwen2.5-0.5B-Instruct-Q4_0",
                 url = "$HF_MIRROR/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
                 size = 394_774_816,
+                requiredRAM = 1,
+                contextSize = 2048,
+                template = "chatml",
+                description = "超轻量级，中文优化，推荐入门"
+            ),
+            ModelConfig(
+                name = "Phi-2-Q4_0",
+                url = "$HF_MIRROR/TheBloke/phi-2-GGUF/resolve/main/phi-2.Q4_0.gguf",
+                size = 494_000_000,
+                requiredRAM = 1,
+                contextSize = 2048,
+                template = "phi",
+                description = "微软 Phi-2，极小体积，英文推理优秀"
+            ),
+            ModelConfig(
+                name = "SmolLM2-1.7B-Instruct-Q4_0",
+                url = "$HF_MIRROR/TheBloke/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct.q4_0.gguf",
+                size = 1_000_000_000,
+                requiredRAM = 1,
+                contextSize = 2048,
+                template = "chatml",
+                description = "HuggingFace SmolLM2-1.7B，性能均衡"
+            ),
+
+            // ========== 中量级 (1-2GB RAM) ==========
+            ModelConfig(
+                name = "Qwen2-0.5B-Instruct-Q4_0",
+                url = "$HF_MIRROR/Qwen/Qwen2-0.5B-Instruct-GGUF/resolve/main/qwen2-0.5b-instruct-q4_0.gguf",
+                size = 420_000_000,
                 requiredRAM = 2,
                 contextSize = 2048,
-                template = "chatml"
+                template = "chatml",
+                description = "Qwen2 基础版，中文能力出色"
             ),
             ModelConfig(
                 name = "TinyLlama-1.1B-Chat-Q4_K_M",
                 url = "$HF_MIRROR/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 size = 667_825_984,
-                requiredRAM = 3,
+                requiredRAM = 2,
                 contextSize = 2048,
-                template = "llama"
+                template = "llama",
+                description = "TinyLlama 1.1B，生态丰富，社区活跃"
+            ),
+            ModelConfig(
+                name = "Gemma-2B-Q4_K_M",
+                url = "$HF_MIRROR/TheBloke/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf",
+                size = 1_600_000_000,
+                requiredRAM = 2,
+                contextSize = 4096,
+                template = "gemma",
+                description = "Google Gemma-2B，指令遵循强"
+            ),
+            ModelConfig(
+                name = "StableLM-3B-Q4_K_M",
+                url = "$HF_MIRROR/TheBloke/StableLM-3B-4e1t-GGUF/resolve/main/stablelm-3b-4e1t-q4_k_m.gguf",
+                size = 1_900_000_000,
+                requiredRAM = 2,
+                contextSize = 4096,
+                template = "stablelm",
+                description = "Stability AI StableLM-3B，长上下文"
+            ),
+
+            // ========== Gemma 4 系列 ==========
+            ModelConfig(
+                name = "gemma-4-e2b-q4_0",
+                url = "$HF_MIRROR/google/gemma-4-e2b-it-GGUF/resolve/main/gemma-4-e2b-it-q4_0.gguf",
+                size = 2_200_000_000,
+                requiredRAM = 3,
+                contextSize = 8192,
+                template = "gemma",
+                description = "Google Gemma 4 E2B - 高效小模型，指令遵循强"
+            ),
+            ModelConfig(
+                name = "gemma-4-e4b-q4_0",
+                url = "$HF_MIRROR/google/gemma-4-e4b-it-GGUF/resolve/main/gemma-4-e4b-it-q4_0.gguf",
+                size = 4_500_000_000,
+                requiredRAM = 5,
+                contextSize = 8192,
+                template = "gemma",
+                description = "Google Gemma 4 E4B - 中等规模，综合能力强"
+            ),
+            ModelConfig(
+                name = "gemma-4-e4b-q5_k_m",
+                url = "$HF_MIRROR/google/gemma-4-e4b-it-GGUF/resolve/main/gemma-4-e4b-it-q5_k_m.gguf",
+                size = 5_200_000_000,
+                requiredRAM = 6,
+                contextSize = 8192,
+                template = "gemma",
+                description = "Google Gemma 4 E4B Q5 - 更高精度量化版本"
             )
         )
 
@@ -340,5 +420,156 @@ class LocalLLMService private constructor(private val context: Context) {
         }
         sb.append("\"")
         return sb.toString()
+    }
+
+    /**
+     * 生成职位画像
+     *
+     * 使用 LLM 根据职位名称和要求生成结构化的职位画像
+     *
+     * @param job 职位实体
+     * @return JSON 格式的职位画像字符串，包含 summary, keySkills, experience, education, salaryRange, highlights
+     */
+    suspend fun generateJobProfile(job: com.hiringai.mobile.data.local.entity.JobEntity): String {
+        val prompt = buildJobProfilePrompt(job)
+        val result: String?
+
+        // 优先尝试本地模型，其次远程 Ollama
+        result = if (isModelLoaded) {
+            generate(prompt, maxTokens = 1024, temperature = 0.7f)
+        } else {
+            // 尝试从设置中获取 Ollama 配置
+            val prefs = context.getSharedPreferences("ml_settings", Context.MODE_PRIVATE)
+            val ollamaUrl = prefs.getString("ollama_url", "http://localhost:11434") ?: "http://localhost:11434"
+            val ollamaModel = prefs.getString("ollama_model", "qwen2.5:0.5b") ?: "qwen2.5:0.5b"
+            generateViaOllama(ollamaUrl, ollamaModel, prompt, maxTokens = 1024)
+        }
+
+        return result ?: buildEmptyProfile()
+    }
+
+    private fun buildJobProfilePrompt(job: com.hiringai.mobile.data.local.entity.JobEntity): String {
+        return """
+请根据以下职位信息，生成一个结构化的职位画像（JSON格式）。
+
+职位名称: ${job.title}
+职位要求: ${job.requirements}
+
+请返回以下格式的JSON（必须严格是有效的JSON，不要包含其他内容）：
+{
+  "summary": "职位概述（1-2句话）",
+  "keySkills": ["技能1", "技能2", "技能3"],
+  "experience": "经验要求描述",
+  "education": "学历要求",
+  "salaryRange": "薪资范围（如：15K-25K/月）",
+  "highlights": ["亮点1", "亮点2", "亮点3"]
+}
+
+请只返回JSON，不要包含其他解释文字。
+        """.trimIndent()
+    }
+
+    private fun buildEmptyProfile(): String {
+        return """
+{
+  "summary": "职位画像生成失败",
+  "keySkills": [],
+  "experience": "未提供",
+  "education": "未提供",
+  "salaryRange": "面议",
+  "highlights": []
+}
+        """.trimIndent()
+    }
+
+    /**
+     * 生成候选人画像
+     *
+     * 使用 LLM 根据候选人简历生成结构化的候选人画像
+     *
+     * @param candidate 候选人实体
+     * @return JSON 格式的候选人画像字符串，包含 summary, skills, experience, education, strengths, weaknesses, highlights
+     */
+    suspend fun generateCandidateProfile(candidate: com.hiringai.mobile.data.local.entity.CandidateEntity): String {
+        val prompt = buildCandidateProfilePrompt(candidate)
+        val result: String?
+
+        // 优先尝试本地模型，其次远程 Ollama
+        result = if (isModelLoaded) {
+            generate(prompt, maxTokens = 1024, temperature = 0.7f)
+        } else {
+            // 尝试从设置中获取 Ollama 配置
+            val prefs = context.getSharedPreferences("ml_settings", Context.MODE_PRIVATE)
+            val ollamaUrl = prefs.getString("ollama_url", "http://localhost:11434") ?: "http://localhost:11434"
+            val ollamaModel = prefs.getString("ollama_model", "qwen2.5:0.5b") ?: "qwen2.5:0.5b"
+            generateViaOllama(ollamaUrl, ollamaModel, prompt, maxTokens = 1024)
+        }
+
+        return result ?: buildEmptyCandidateProfile()
+    }
+
+    private fun buildCandidateProfilePrompt(candidate: com.hiringai.mobile.data.local.entity.CandidateEntity): String {
+        val resumeContent = candidate.resume.ifEmpty { "无简历内容" }
+        return """
+请根据以下候选人简历信息，生成一个结构化的候选人画像（JSON格式）。
+
+候选人姓名: ${candidate.name}
+候选人邮箱: ${candidate.email.ifEmpty { "未提供" }}
+候选人电话: ${candidate.phone.ifEmpty { "未提供" }}
+简历内容:
+$resumeContent
+
+请返回以下格式的JSON（必须严格是有效的JSON，不要包含其他内容）：
+{
+  "summary": "候选人概述（1-2句话，概括候选人背景和特点）",
+  "skills": ["技能1", "技能2", "技能3"],
+  "experience": "工作经验描述（工作年限、主要经历）",
+  "education": "教育背景（学校、学历、专业）",
+  "strengths": ["优势1", "优势2", "优势3"],
+  "weaknesses": ["不足1", "不足2"],
+  "highlights": ["亮点1", "亮点2", "亮点3"]
+}
+
+请只返回JSON，不要包含其他解释文字。
+        """.trimIndent()
+    }
+
+    private fun buildEmptyCandidateProfile(): String {
+        return """
+{
+  "summary": "候选人画像生成失败",
+  "skills": [],
+  "experience": "未提供",
+  "education": "未提供",
+  "strengths": [],
+  "weaknesses": [],
+  "highlights": []
+}
+        """.trimIndent()
+    }
+
+    /**
+     * 检查设置中是否配置了 Ollama
+     */
+    fun isOllamaConfigured(): Boolean {
+        val prefs = context.getSharedPreferences("ml_settings", Context.MODE_PRIVATE)
+        val url = prefs.getString("ollama_url", null)
+        return !url.isNullOrEmpty()
+    }
+
+    /**
+     * 获取配置的 Ollama URL
+     */
+    fun getOllamaUrl(): String {
+        val prefs = context.getSharedPreferences("ml_settings", Context.MODE_PRIVATE)
+        return prefs.getString("ollama_url", "http://localhost:11434") ?: "http://localhost:11434"
+    }
+
+    /**
+     * 获取配置的 Ollama 模型
+     */
+    fun getOllamaModel(): String {
+        val prefs = context.getSharedPreferences("ml_settings", Context.MODE_PRIVATE)
+        return prefs.getString("ollama_model", "qwen2.5:0.5b") ?: "qwen2.5:0.5b"
     }
 }

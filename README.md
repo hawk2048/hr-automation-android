@@ -43,12 +43,17 @@
 
 ### ML 推理方案
 
-| 方案 | 模型 | 内存需求 | 状态 | 说明 |
-|------|------|----------|------|------|
-| 本地 llama.cpp | Qwen2.5-0.5B-Q4_0 | 2 GB | 已实现 | llama-kotlin-android JNI，设备端推理 |
-| 本地 llama.cpp | TinyLlama-1.1B-Q4_K_M | 3 GB | 已实现 | llama-kotlin-android JNI，更强推理能力 |
-| 本地 ONNX | all-MiniLM-L6-v2 | <1 GB | 已实现 | ONNX Runtime + NNAPI 加速，384 维向量 |
-| 远程 Ollama | 任意 | 不限 | 已实现 | 电脑/服务器运行 Ollama，手机通过 HTTP 调用 |
+| 方案 | 模型 | 量化 | 大小 | 内存需求 | 状态 | 说明 |
+|------|------|------|------|----------|------|------|
+| 本地 llama.cpp | Qwen2.5-0.5B | Q4_0 | ~400MB | 1 GB | 已实现 | 超轻量级，中文优化 |
+| 本地 llama.cpp | Phi-2 | Q4_0 | ~500MB | 1 GB | 已实现 | 微软模型，英文推理优秀 |
+| 本地 llama.cpp | SmolLM2-1.7B | Q4_0 | ~1GB | 1 GB | 已实现 | HuggingFace，平衡性能 |
+| 本地 llama.cpp | Qwen2-0.5B | Q4_0 | ~420MB | 2 GB | 已实现 | Qwen2 基础版 |
+| 本地 llama.cpp | TinyLlama-1.1B | Q4_K_M | ~670MB | 2 GB | 已实现 | 生态丰富 |
+| 本地 llama.cpp | Gemma-2B | Q4_K_M | ~1.6GB | 2 GB | 已实现 | Google，指令遵循强 |
+| 本地 llama.cpp | StableLM-3B | Q4_K_M | ~1.9GB | 2 GB | 已实现 | 长上下文支持 |
+| 本地 ONNX | all-MiniLM-L6-v2 | - | ~90MB | <1 GB | 已实现 | ONNX Runtime + NNAPI |
+| 远程 Ollama | 任意 | - | - | 不限 | 已实现 | 电脑/服务器运行 |
 
 ## 技术栈
 

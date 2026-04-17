@@ -59,7 +59,22 @@
             android:ellipsize="end"
             app:layout_constraintTop_toBottomOf="@id/tv_phone"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_profile_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="已生成画像"
+            android:textSize="10sp"
+            android:textColor="@android:color/white"
+            android:background="@color/primary"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tv_resume_preview"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -39,7 +39,9 @@ class LocalEmbeddingService(private val context: Context) {
         val vocabUrl: String,       // tokenizer vocab URL
         val modelSize: Long,
         val dimension: Int,
-        val maxSeqLength: Int = 256
+        val maxSeqLength: Int = 256,
+        val description: String = "",  // 模型描述/适用场景
+        val recommendedFor: String = "" // 推荐用途
     )
 
     companion object {
@@ -49,13 +51,72 @@ class LocalEmbeddingService(private val context: Context) {
         private const val HF_MIRROR = "https://hf-mirror.com"
 
         val AVAILABLE_MODELS = listOf(
+            // ========== 轻量级 (<100MB) ==========
             EmbeddingModelConfig(
                 name = "all-MiniLM-L6-v2",
                 modelUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx",
                 vocabUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt",
                 modelSize = 90_000_000,
                 dimension = 384,
-                maxSeqLength = 256
+                maxSeqLength = 256,
+                description = "轻量级英文语义匹配模型，6层Transformer",
+                recommendedFor = "英文文本相似度计算、语义匹配（资源受限设备首选）"
+            ),
+            EmbeddingModelConfig(
+                name = "all-MiniLM-L12-v2",
+                modelUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L12-v2/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/sentence-transformers/all-MiniLM-L12-v2/resolve/main/vocab.txt",
+                modelSize = 120_000_000,
+                dimension = 384,
+                maxSeqLength = 256,
+                description = "中等量级英文语义匹配模型，12层Transformer，更高精度",
+                recommendedFor = "英文文本相似度计算、语义匹配（需要更高精度时）"
+            ),
+
+            // ========== 中量级 (100-200MB) - 英文优化 ==========
+            EmbeddingModelConfig(
+                name = "paraphrase-MiniLM-L6-v2",
+                modelUrl = "$HF_MIRROR/sentence-transformers/paraphrase-MiniLM-L6-v2/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/sentence-transformers/paraphrase-MiniLM-L6-v2/resolve/main/vocab.txt",
+                modelSize = 90_000_000,
+                dimension = 384,
+                maxSeqLength = 256,
+                description = "英文改写模型，适合句子改写和释义识别",
+                recommendedFor = "英文改写检测、句子释义识别"
+            ),
+            EmbeddingModelConfig(
+                name = "bge-small-en-v1.5",
+                modelUrl = "$HF_MIRROR/BAAI/bge-small-en-v1.5/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/BAAI/bge-small-en-v1.5/resolve/main/vocab.txt",
+                modelSize = 130_000_000,
+                dimension = 384,
+                maxSeqLength = 512,
+                description = "BGE 英文小模型，1.5版本优化，召回效果好",
+                recommendedFor = "英文文本召回、检索（高召回率场景）"
+            ),
+
+            // ========== 中量级 (100-200MB) - 中文优化 ==========
+            EmbeddingModelConfig(
+                name = "bge-base-zh-v1.5",
+                modelUrl = "$HF_MIRROR/BAAI/bge-base-zh-v1.5/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/BAAI/bge-base-zh-v1.5/resolve/main/vocab.txt",
+                modelSize = 170_000_000,
+                dimension = 768,
+                maxSeqLength = 512,
+                description = "BGE 中文基础模型，768维向量，中文语义理解强",
+                recommendedFor = "中文文本召回、语义匹配（推荐中文场景）"
+            ),
+
+            // ========== 大模型 (>200MB) - 中文优化 ==========
+            EmbeddingModelConfig(
+                name = "bge-large-zh-v1.5",
+                modelUrl = "$HF_MIRROR/BAAI/bge-large-zh-v1.5/resolve/main/onnx/model.onnx",
+                vocabUrl = "$HF_MIRROR/BAAI/bge-large-zh-v1.5/resolve/main/vocab.txt",
+                modelSize = 500_000_000,
+                dimension = 1024,
+                maxSeqLength = 512,
+                description = "BGE 中文大模型，1024维向量，最高精度",
+                recommendedFor = "中文高精度语义匹配（设备性能充足时）"
             )
         )
 

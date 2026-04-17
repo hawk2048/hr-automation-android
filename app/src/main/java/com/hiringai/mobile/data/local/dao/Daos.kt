@@ -4,6 +4,7 @@ import androidx.room.*
 import com.hiringai.mobile.data.local.entity.JobEntity
 import com.hiringai.mobile.data.local.entity.CandidateEntity
 import com.hiringai.mobile.data.local.entity.MatchEntity
+import com.hiringai.mobile.data.local.entity.ApplicationEntity
 
 @Dao
 interface JobDao {
@@ -63,7 +64,28 @@ interface MatchDao {
     
     @Query("UPDATE matches SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String)
-    
+
     @Delete
     suspend fun delete(match: MatchEntity)
+}
+
+@Dao
+interface ApplicationDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(application: ApplicationEntity): Long
+
+    @Query("SELECT * FROM applications ORDER BY appliedAt DESC")
+    suspend fun getAll(): List<ApplicationEntity>
+
+    @Query("SELECT * FROM applications WHERE jobId = :jobId ORDER BY appliedAt DESC")
+    suspend fun getByJobId(jobId: Long): List<ApplicationEntity>
+
+    @Query("SELECT * FROM applications WHERE candidateId = :candidateId ORDER BY appliedAt DESC")
+    suspend fun getByCandidateId(candidateId: Long): List<ApplicationEntity>
+
+    @Update
+    suspend fun update(application: ApplicationEntity)
+
+    @Delete
+    suspend fun delete(application: ApplicationEntity)
 }

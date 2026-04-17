@@ -68,6 +68,24 @@ class LocalImageModelService(private val context: Context) {
                 labelsUrl = "$HF_MIRROR/onnx-community/mobilenet_v2_100/resolve/main/labels.txt"
             ),
             ImageModelConfig(
+                name = "mobilenet_v3_small",
+                modelUrl = "$HF_MIRROR/onnx-community/mobilenetv3_small-100/resolve/main/model.onnx",
+                modelSize = 10_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "MobileNet V3 Small - 更轻量的移动端分类模型",
+                requiredRAM = 1,
+                inputSize = 224 to 224
+            ),
+            ImageModelConfig(
+                name = "mobilenet_v3_large",
+                modelUrl = "$HF_MIRROR/onnx-community/mobilenetv3_large-100/resolve/main/model.onnx",
+                modelSize = 21_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "MobileNet V3 Large - 更高精度的移动端分类模型",
+                requiredRAM = 1,
+                inputSize = 224 to 224
+            ),
+            ImageModelConfig(
                 name = "efficientnet_b0",
                 modelUrl = "$HF_MIRROR/onnx-community/timm_efficientnet_b0_ns_1k_32px/resolve/main/model.onnx",
                 modelSize = 20_000_000,
@@ -76,6 +94,60 @@ class LocalImageModelService(private val context: Context) {
                 requiredRAM = 2,
                 inputSize = 224 to 224,
                 labelsUrl = "$HF_MIRROR/onnx-community/timm_efficientnet_b0_ns_1k_32px/resolve/main/labels.txt"
+            ),
+            ImageModelConfig(
+                name = "efficientnet_b1",
+                modelUrl = "$HF_MIRROR/onnx-community/timm_efficientnet_b1_ns/resolve/main/model.onnx",
+                modelSize = 30_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "EfficientNet B1 - 更高精度的图像分类",
+                requiredRAM = 2,
+                inputSize = 240 to 240
+            ),
+            ImageModelConfig(
+                name = "efficientnet_b2",
+                modelUrl = "$HF_MIRROR/onnx-community/timm_efficientnet_b2_ns/resolve/main/model.onnx",
+                modelSize = 35_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "EfficientNet B2 - 高精度图像分类",
+                requiredRAM = 2,
+                inputSize = 260 to 260
+            ),
+            ImageModelConfig(
+                name = "squeezenet1_1",
+                modelUrl = "$HF_MIRROR/onnx-community/squeezenet1.1/resolve/main/model.onnx",
+                modelSize = 5_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "SqueezeNet 1.1 - 超轻量级分类模型",
+                requiredRAM = 1,
+                inputSize = 224 to 224
+            ),
+            ImageModelConfig(
+                name = "shufflenet_v2",
+                modelUrl = "$HF_MIRROR/onnx-community/shufflenet_v2_x1.0/resolve/main/model.onnx",
+                modelSize = 6_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "ShuffleNet V2 - 高效移动端分类模型",
+                requiredRAM = 1,
+                inputSize = 224 to 224
+            ),
+            ImageModelConfig(
+                name = "resnet18",
+                modelUrl = "$HF_MIRROR/onnx-community/resnet18/resolve/main/model.onnx",
+                modelSize = 45_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "ResNet-18 - 经典残差网络分类模型",
+                requiredRAM = 2,
+                inputSize = 224 to 224
+            ),
+            ImageModelConfig(
+                name = "resnet50",
+                modelUrl = "$HF_MIRROR/onnx-community/resnet50/resolve/main/model.onnx",
+                modelSize = 100_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "ResNet-50 - 高精度残差网络分类模型",
+                requiredRAM = 3,
+                inputSize = 224 to 224
             ),
 
             // ========== Vision Transformer Models ==========
@@ -98,6 +170,15 @@ class LocalImageModelService(private val context: Context) {
                 requiredRAM = 2,
                 inputSize = 224 to 224
             ),
+            ImageModelConfig(
+                name = "deit_small_patch16_224",
+                modelUrl = "$HF_MIRROR/onnx-community/deit-small-patch16-224/resolve/main/model.onnx",
+                modelSize = 85_000_000,
+                type = ModelType.CLASSIFICATION,
+                description = "DeiT Small - 数据高效训练的ViT",
+                requiredRAM = 2,
+                inputSize = 224 to 224
+            ),
 
             // ========== OCR Models ==========
             ImageModelConfig(
@@ -110,6 +191,15 @@ class LocalImageModelService(private val context: Context) {
                 inputSize = 320 to 32
             ),
             ImageModelConfig(
+                name = "crnn_vgg16",
+                modelUrl = "$HF_MIRROR/TheMuppets/crnn_vgg16/resolve/main/model.onnx",
+                modelSize = 60_000_000,
+                type = ModelType.OCR,
+                description = "CRNN VGG16 - 高精度场景文字识别",
+                requiredRAM = 2,
+                inputSize = 320 to 32
+            ),
+            ImageModelConfig(
                 name = "trilingual_ocr",
                 modelUrl = "$HF_MIRROR/TheMuppets/trilingual_ocr/resolve/main/model.onnx",
                 modelSize = 75_000_000,
@@ -117,6 +207,15 @@ class LocalImageModelService(private val context: Context) {
                 description = "支持中英日三国文字识别的高精度OCR模型",
                 requiredRAM = 2,
                 inputSize = 384 to 64
+            ),
+            ImageModelConfig(
+                name = "chinese_ocr_db_crnn",
+                modelUrl = "$HF_MIRROR/PaddleOCR/ch_ppocr_server_v2.0/resolve/main/rec_inference.onnx",
+                modelSize = 100_000_000,
+                type = ModelType.OCR,
+                description = "PaddleOCR 中文识别模型 - 高精度中文OCR",
+                requiredRAM = 2,
+                inputSize = 320 to 48
             ),
 
             // ========== VLM Models (Vision-Language) ==========
@@ -356,10 +455,16 @@ class LocalImageModelService(private val context: Context) {
             // Convert to RGB float tensor [1, 3, H, W]
             val inputData = preprocessImage(resized, 3, height, width)
 
+            // Create ByteBuffer for ONNX tensor
+            val inputBuffer = ByteBuffer.allocateDirect(inputData.size * 4).order(ByteOrder.nativeOrder())
+            val floatBuffer = inputBuffer.asFloatBuffer()
+            floatBuffer.put(inputData)
+            floatBuffer.rewind()
+
             // Create input tensor
             val inputTensor = OnnxTensor.createTensor(
                 env!!,
-                inputData,
+                inputBuffer,
                 longArrayOf(1, 3, height.toLong(), width.toLong())
             )
 
@@ -399,9 +504,15 @@ class LocalImageModelService(private val context: Context) {
 
             val inputData = preprocessImage(resized, 3, height, width)
 
+            // Create ByteBuffer for ONNX tensor
+            val inputBuffer = ByteBuffer.allocateDirect(inputData.size * 4).order(ByteOrder.nativeOrder())
+            val floatBuffer = inputBuffer.asFloatBuffer()
+            floatBuffer.put(inputData)
+            floatBuffer.rewind()
+
             val inputTensor = OnnxTensor.createTensor(
                 env!!,
-                inputData,
+                inputBuffer,
                 longArrayOf(1, 3, height.toLong(), width.toLong())
             )
 
@@ -440,9 +551,15 @@ class LocalImageModelService(private val context: Context) {
 
             val inputData = preprocessImage(resized, 3, height, width)
 
+            // Create ByteBuffer for ONNX tensor
+            val inputBuffer = ByteBuffer.allocateDirect(inputData.size * 4).order(ByteOrder.nativeOrder())
+            val floatBuffer = inputBuffer.asFloatBuffer()
+            floatBuffer.put(inputData)
+            floatBuffer.rewind()
+
             val inputTensor = OnnxTensor.createTensor(
                 env!!,
-                inputData,
+                inputBuffer,
                 longArrayOf(1, 3, height.toLong(), width.toLong())
             )
 
@@ -543,8 +660,14 @@ class LocalImageModelService(private val context: Context) {
             val outputArray = output.get(0).value as Array<Array<FloatArray>>
             // Return flattened features
             val batch0 = outputArray[0]
-            val featureDim = batch0.size
-            return batch0.flatten().toFloatArray()
+            val result = FloatArray(batch0.size * batch0.getOrElse(0) { floatArrayOf() }.size)
+            var idx = 0
+            for (arr in batch0) {
+                for (v in arr) {
+                    if (idx < result.size) result[idx++] = v
+                }
+            }
+            return result
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract vision features", e)
             return null

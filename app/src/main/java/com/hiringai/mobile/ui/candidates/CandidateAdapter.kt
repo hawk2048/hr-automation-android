@@ -43,6 +43,13 @@ class CandidateAdapter(
             binding.tvEmail.text = candidate.email.ifEmpty { "无邮箱" }
             binding.tvPhone.text = "电话: ${candidate.phone.ifEmpty { "无电话" }}"
             binding.tvResumePreview.text = candidate.resume.ifEmpty { "暂无简历信息" }
+
+            // 显示画像标记
+            if (candidate.profile.isNotEmpty()) {
+                binding.tvProfileBadge.visibility = android.view.View.VISIBLE
+            } else {
+                binding.tvProfileBadge.visibility = android.view.View.GONE
+            }
         }
     }
 

@@ -10,4 +10,17 @@
     <color name="text_secondary">#757575</color>
     <color name="ic_launcher_background">#2196F3</color>
     <color name="ic_launcher_foreground">#FFFFFF</color>
+
+    <!-- Score indicator colors -->
+    <color name="score_excellent">#4CAF50</color>
+    <color name="score_good">#8BC34A</color>
+    <color name="score_average">#FFC107</color>
+    <color name="score_poor">#FF9800</color>
+    <color name="score_bad">#F44336</color>
+
+    <!-- Progress bar backgrounds -->
+    <color name="progress_background">#E0E0E0</color>
+
+    <!-- Background -->
+    <color name="background">#FAFAFA</color>
 </resources>

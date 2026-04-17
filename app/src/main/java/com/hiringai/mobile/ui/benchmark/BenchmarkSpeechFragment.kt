@@ -1,16 +1,20 @@
 package com.hiringai.mobile.ui.benchmark
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hiringai.mobile.R
 import com.hiringai.mobile.databinding.FragmentBenchmarkSpeechBinding
 import com.hiringai.mobile.ml.speech.LocalSpeechService
@@ -18,6 +22,7 @@ import com.hiringai.mobile.ml.speech.SpeechModelType
 import com.hiringai.mobile.ml.benchmark.SpeechModelBenchmark
 import com.hiringai.mobile.ml.benchmark.SpeechModelBenchmarkResult
 import com.hiringai.mobile.ml.benchmark.SpeechBatchReport
+import com.hiringai.mobile.ml.benchmark.TestAudioGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,11 +43,24 @@ class BenchmarkSpeechFragment : Fragment() {
 
     private lateinit var speechService: LocalSpeechService
     private lateinit var benchmarkRunner: SpeechModelBenchmark
-    private var selectedModelIndex = 0
     private var lastReport: SpeechBatchReport? = null
+
+    // 音频录制相关
+    private var audioRecorder: TestAudioGenerator.AudioRecorder? = null
+    private var isRecording = false
+    private var selectedAudioData: FloatArray? = null
+    private var selectedAudioName: String = ""
+
+    // 选中的测试类型
+    private var selectedBenchmarkType: BenchmarkType = BenchmarkType.ALL
+
+    private enum class BenchmarkType {
+        TTS, STT, VAD, ALL
+    }
 
     companion object {
         fun newInstance() = BenchmarkSpeechFragment()
+        private const val REQUEST_RECORD_AUDIO_PERMISSION = 1001
     }
 
     override fun onCreateView(
@@ -60,9 +78,9 @@ class BenchmarkSpeechFragment : Fragment() {
         speechService = LocalSpeechService.getInstance(requireContext())
         benchmarkRunner = SpeechModelBenchmark(requireContext())
 
-        setupModelSelector()
+        setupChipGroup()
         setupButtons()
-        updateStatus("等待开始测试...\n\n选择模型类型后点击\"开始测试\"")
+        updateStatus("等待开始测试...\n\n选择测试类型后点击\"开始测试\"")
         updateDeviceInfo()
     }
 
@@ -70,83 +88,46 @@ class BenchmarkSpeechFragment : Fragment() {
         binding.tvDeviceInfo.text = benchmarkRunner.getDeviceInfo()
     }
 
-    private fun setupModelSelector() {
-        val models = LocalSpeechService.AVAILABLE_MODELS
-        val modelDisplayList = models.mapIndexed { index, config ->
-            val isDownloaded = speechService.isModelDownloaded(config.name)
-            val typeStr = when (config.type) {
-                SpeechModelType.WHISPER -> "Whisper"
-                SpeechModelType.PARAFORMER -> "Paraformer"
-                SpeechModelType.CAM_PLUS -> "Cam++"
-                SpeechModelType.TTS -> "TTS"
-                SpeechModelType.VAD -> "VAD"
+    private fun setupChipGroup() {
+        binding.chipGroupBenchmarkType.setOnCheckedStateChangeListener { _, checkedIds ->
+            selectedBenchmarkType = when {
+                checkedIds.contains(R.id.chip_tts) -> BenchmarkType.TTS
+                checkedIds.contains(R.id.chip_stt) -> BenchmarkType.STT
+                checkedIds.contains(R.id.chip_vad) -> BenchmarkType.VAD
+                checkedIds.contains(R.id.chip_all) -> BenchmarkType.ALL
+                else -> BenchmarkType.ALL
             }
-            val sizeStr = formatSize(config.modelSize)
-            if (isDownloaded) {
-                "✓ $typeStr | $sizeStr | ${config.name}"
-            } else {
-                "$typeStr | $sizeStr | ${config.name}"
-            }
-        }
-
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modelDisplayList)
-        binding.spinnerModels.setAdapter(adapter)
-
-        selectedModelIndex = 0
-        if (modelDisplayList.isNotEmpty()) {
-            binding.spinnerModels.setText(modelDisplayList[0], false)
-        }
-
-        binding.spinnerModels.setOnItemClickListener { _, _, position, _ ->
-            selectedModelIndex = position
-            updateModelStatus()
-        }
-    }
-
-    private fun updateModelStatus() {
-        val models = LocalSpeechService.AVAILABLE_MODELS
-        if (selectedModelIndex < 0 || selectedModelIndex >= models.size) return
-
-        val config = models[selectedModelIndex]
-        val isDownloaded = speechService.isModelDownloaded(config.name)
-        val isLoaded = speechService.isModelLoaded && speechService.getLoadedModelName() == config.name
-
-        binding.tvModelStatus.text = when {
-            isLoaded -> "✓ 已加载: ${config.name}"
-            isDownloaded -> "✓ 已下载: ${config.name}"
-            else -> "✗ 未下载: ${config.name}"
         }
     }
 
     private fun setupButtons() {
-        // 下载模型按钮
-        binding.btnDownloadModel.setOnClickListener {
-            downloadModel()
+        // 录音按钮
+        binding.btnRecordAudio.setOnClickListener {
+            if (isRecording) {
+                stopRecording()
+            } else {
+                startRecording()
+            }
         }
 
-        // 单模型测试按钮
-        binding.btnSingleBenchmark.setOnClickListener {
-            runSingleBenchmark()
+        // 停止录音按钮
+        binding.btnStopRecording.setOnClickListener {
+            stopRecording()
         }
 
-        // 批量测试按钮
-        binding.btnBatchBenchmark.setOnClickListener {
-            runBatchBenchmark()
+        // 选择音频文件
+        binding.btnSelectAudio.setOnClickListener {
+            Toast.makeText(requireContext(), "音频文件选择功能开发中", Toast.LENGTH_SHORT).show()
         }
 
-        // 批量 Whisper 测试
-        binding.btnBenchmarkWhisper.setOnClickListener {
-            runWhisperBenchmark()
+        // 使用内置测试音频
+        binding.btnUseTestAudio.setOnClickListener {
+            showTestAudioSelectionDialog()
         }
 
-        // 批量 Paraformer 测试
-        binding.btnBenchmarkParaformer.setOnClickListener {
-            runParaformerBenchmark()
-        }
-
-        // 批量 VAD 测试
-        binding.btnBenchmarkVad.setOnClickListener {
-            runVADBenchmark()
+        // 开始测试
+        binding.btnStartBenchmark.setOnClickListener {
+            startBenchmark()
         }
 
         // 导出报告
@@ -160,79 +141,192 @@ class BenchmarkSpeechFragment : Fragment() {
         }
     }
 
-    private fun downloadModel() {
-        val models = LocalSpeechService.AVAILABLE_MODELS
-        if (selectedModelIndex < 0 || selectedModelIndex >= models.size) return
-
-        val config = models[selectedModelIndex]
-
-        binding.progressDownload.visibility = View.VISIBLE
-        binding.btnDownloadModel.isEnabled = false
-        binding.btnDownloadModel.text = "下载中..."
-
-        lifecycleScope.launch {
-            val success = speechService.downloadModel(config) { progress ->
-                requireActivity().runOnUiThread {
-                    binding.progressDownload.progress = progress
-                    if (progress == 100) {
-                        binding.progressDownload.visibility = View.GONE
-                        updateModelStatus()
-                        Toast.makeText(requireContext(), "下载完成: ${config.name}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-
-            requireActivity().runOnUiThread {
-                binding.progressDownload.visibility = View.GONE
-                binding.btnDownloadModel.text = "下载模型"
-                binding.btnDownloadModel.isEnabled = true
-                updateModelStatus()
-
-                if (!success) {
-                    Toast.makeText(requireContext(), "下载失败", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    private fun runSingleBenchmark() {
-        val models = LocalSpeechService.AVAILABLE_MODELS
-        if (selectedModelIndex < 0 || selectedModelIndex >= models.size) {
-            Toast.makeText(requireContext(), "请选择模型", Toast.LENGTH_SHORT).show()
+    private fun startRecording() {
+        // 检查录音权限
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
             return
         }
 
-        val config = models[selectedModelIndex]
-        if (!speechService.isModelDownloaded(config.name)) {
-            Toast.makeText(requireContext(), "请先下载模型", Toast.LENGTH_SHORT).show()
-            return
-        }
+        try {
+            audioRecorder = TestAudioGenerator.AudioRecorder(requireContext())
+            val success = audioRecorder?.startRecording() ?: false
 
-        setLoading(true)
-        updateStatus("正在测试: ${config.name}...")
+            if (success) {
+                isRecording = true
+                binding.btnRecordAudio.text = "停止"
+                binding.layoutRecordingStatus.visibility = View.VISIBLE
+                binding.btnStopRecording.isEnabled = true
+                binding.chronometerRecording.base = SystemClock.elapsedRealtime()
+                binding.chronometerRecording.start()
+                binding.tvRecordingStatus.text = "正在录音..."
+            } else {
+                Toast.makeText(requireContext(), "无法启动录音", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "录音失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopRecording() {
+        if (!isRecording || audioRecorder == null) return
+
+        binding.chronometerRecording.stop()
+        binding.tvRecordingStatus.text = "处理录音..."
 
         lifecycleScope.launch {
-            val result = benchmarkRunner.benchmarkModel(config)
+            val audioData = withContext(Dispatchers.IO) {
+                audioRecorder?.stopRecording()
+            }
 
-            withContext(Dispatchers.Main) {
-                setLoading(false)
-                displayResult(result)
-                updateStatus("测试完成: ${config.name}\n${if (result.success) "✅ 成功" else "❌ 失败"}")
+            isRecording = false
+            binding.btnRecordAudio.text = "录音"
+            binding.btnStopRecording.isEnabled = false
+
+            if (audioData != null && audioData.isNotEmpty()) {
+                selectedAudioData = audioData
+                selectedAudioName = "录音 (${audioData.size / TestAudioGenerator.SAMPLE_RATE}秒)"
+
+                binding.tvAudioInfo.text = "音频: $selectedAudioName\n采样率: ${TestAudioGenerator.SAMPLE_RATE} Hz\n样本数: ${audioData.size}"
+                binding.tvAudioInfo.visibility = View.VISIBLE
+
+                // 立即进行语音识别测试
+                runTranscriptionTest(audioData)
+            } else {
+                binding.tvRecordingStatus.text = "录音失败或为空"
             }
         }
     }
 
-    private fun runBatchBenchmark() {
+    private fun showTestAudioSelectionDialog() {
+        val testAudios = TestAudioGenerator.getAvailableTestAudios()
+        val displayNames = testAudios.map { "${it.displayName}\n${it.description}" }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("选择测试音频")
+            .setItems(displayNames.toTypedArray()) { dialog, which ->
+                val selectedInfo = testAudios[which]
+                loadTestAudio(selectedInfo)
+                dialog.dismiss()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun loadTestAudio(info: TestAudioGenerator.TestAudioInfo) {
+        lifecycleScope.launch {
+            binding.tvStatusArea.text = "加载测试音频: ${info.displayName}..."
+
+            val audioData = withContext(Dispatchers.IO) {
+                TestAudioGenerator.loadTestAudio(requireContext(), info)
+            }
+
+            if (audioData != null) {
+                selectedAudioData = audioData
+                selectedAudioName = info.displayName
+
+                binding.tvAudioInfo.text = "音频: ${info.displayName}\n采样率: ${info.sampleRate} Hz\n时长: ${info.durationSeconds}秒"
+                binding.tvAudioInfo.visibility = View.VISIBLE
+
+                updateStatus("已加载测试音频: ${info.displayName}\n可以开始测试")
+            } else {
+                updateStatus("加载测试音频失败")
+            }
+        }
+    }
+
+    private fun runTranscriptionTest(audioData: FloatArray) {
+        if (!speechService.isModelLoaded) {
+            // 尝试加载第一个可用的模型
+            val models = LocalSpeechService.AVAILABLE_MODELS
+            val downloadedModel = models.firstOrNull { speechService.isModelDownloaded(it.name) }
+
+            if (downloadedModel == null) {
+                binding.tvTranscriptionResult.text = "请先下载并加载语音识别模型"
+                binding.tvTranscriptionResult.visibility = View.VISIBLE
+                return
+            }
+
+            lifecycleScope.launch {
+                val loaded = withContext(Dispatchers.IO) {
+                    speechService.loadModel(downloadedModel)
+                }
+
+                if (loaded) {
+                    performTranscription(audioData)
+                } else {
+                    binding.tvTranscriptionResult.text = "无法加载模型"
+                    binding.tvTranscriptionResult.visibility = View.VISIBLE
+                }
+            }
+        } else {
+            performTranscription(audioData)
+        }
+    }
+
+    private fun performTranscription(audioData: FloatArray) {
+        lifecycleScope.launch {
+            binding.tvStatusArea.text = "正在进行语音识别..."
+            binding.tvTranscriptionResult.visibility = View.VISIBLE
+            binding.tvTranscriptionResult.text = "识别中..."
+
+            val result = withContext(Dispatchers.IO) {
+                speechService.transcribe(audioData, TestAudioGenerator.SAMPLE_RATE)
+            }
+
+            if (result != null) {
+                val displayText = buildString {
+                    appendLine("📝 识别结果:")
+                    appendLine(result.text)
+                    appendLine()
+                    appendLine("置信度: ${"%.2f".format(result.confidence)}")
+                    appendLine("时长: ${"%.1f".format(result.duration)}秒")
+                    if (result.language != null) {
+                        appendLine("语言: ${result.language}")
+                    }
+                }
+                binding.tvTranscriptionResult.text = displayText
+                updateStatus("语音识别完成")
+            } else {
+                binding.tvTranscriptionResult.text = "识别失败"
+                updateStatus("语音识别失败")
+            }
+        }
+    }
+
+    private fun startBenchmark() {
+        val warmupIterations = binding.etWarmupIterations.text.toString().toIntOrNull() ?: 2
+        val testIterations = binding.etTestIterations.text.toString().toIntOrNull() ?: 5
+
         setLoading(true)
-        updateStatus("正在批量测试所有语音模型...")
+        binding.progressBenchmark.visibility = View.VISIBLE
+        binding.tvProgressStatus.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val report = benchmarkRunner.runBatchBenchmark { progress, result ->
-                requireActivity().runOnUiThread {
-                    binding.progressBenchmark.progress = progress
-                    if (result != null) {
-                        appendResult(result)
+            val report = when (selectedBenchmarkType) {
+                BenchmarkType.STT -> benchmarkRunner.benchmarkWhisperModels { progress, result ->
+                    requireActivity().runOnUiThread {
+                        updateProgress(progress, result)
                     }
+                }
+                BenchmarkType.VAD -> benchmarkRunner.benchmarkVADModels { progress, result ->
+                    requireActivity().runOnUiThread {
+                        updateProgress(progress, result)
+                    }
+                }
+                BenchmarkType.ALL -> benchmarkRunner.runBatchBenchmark { progress, result ->
+                    requireActivity().runOnUiThread {
+                        updateProgress(progress, result)
+                    }
+                }
+                BenchmarkType.TTS -> {
+                    // TTS benchmark not fully implemented yet
+                    SpeechBatchReport(
+                        results = listOf(),
+                        deviceInfo = benchmarkRunner.getDeviceInfo(),
+                        totalDurationMs = 0
+                    )
                 }
             }
 
@@ -240,74 +334,16 @@ class BenchmarkSpeechFragment : Fragment() {
                 setLoading(false)
                 lastReport = report
                 displayReport(report)
-                updateStatus("批量测试完成\n成功: ${report.results.count { it.success }}/${report.results.size}")
+                updateStatus("测试完成\n成功: ${report.results.count { it.success }}/${report.results.size}")
             }
         }
     }
 
-    private fun runWhisperBenchmark() {
-        setLoading(true)
-        updateStatus("正在测试 Whisper 模型...")
-
-        lifecycleScope.launch {
-            val report = benchmarkRunner.benchmarkWhisperModels { progress, result ->
-                requireActivity().runOnUiThread {
-                    binding.progressBenchmark.progress = progress
-                    if (result != null) {
-                        appendResult(result)
-                    }
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                setLoading(false)
-                lastReport = report
-                displayReport(report)
-            }
-        }
-    }
-
-    private fun runParaformerBenchmark() {
-        setLoading(true)
-        updateStatus("正在测试 Paraformer 模型...")
-
-        lifecycleScope.launch {
-            val report = benchmarkRunner.benchmarkParaformerModels { progress, result ->
-                requireActivity().runOnUiThread {
-                    binding.progressBenchmark.progress = progress
-                    if (result != null) {
-                        appendResult(result)
-                    }
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                setLoading(false)
-                lastReport = report
-                displayReport(report)
-            }
-        }
-    }
-
-    private fun runVADBenchmark() {
-        setLoading(true)
-        updateStatus("正在测试 VAD 模型...")
-
-        lifecycleScope.launch {
-            val report = benchmarkRunner.benchmarkVADModels { progress, result ->
-                requireActivity().runOnUiThread {
-                    binding.progressBenchmark.progress = progress
-                    if (result != null) {
-                        appendResult(result)
-                    }
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                setLoading(false)
-                lastReport = report
-                displayReport(report)
-            }
+    private fun updateProgress(progress: Int, result: SpeechModelBenchmarkResult?) {
+        binding.progressBenchmark.progress = progress
+        binding.tvProgressStatus.text = "进度: $progress%"
+        if (result != null) {
+            appendResult(result)
         }
     }
 
@@ -317,12 +353,19 @@ class BenchmarkSpeechFragment : Fragment() {
     }
 
     private fun appendResult(result: SpeechModelBenchmarkResult) {
-        binding.tvResults.append("\n\n${result.toSummary()}")
+        val currentText = binding.tvResults.text.toString()
+        if (currentText == "暂无测试结果") {
+            binding.tvResults.text = result.toSummary()
+        } else {
+            binding.tvResults.append("\n\n${result.toSummary()}")
+        }
     }
 
     private fun displayReport(report: SpeechBatchReport) {
         binding.tvResults.text = report.toExportText()
         binding.btnExportReport.visibility = View.VISIBLE
+        binding.progressBenchmark.visibility = View.GONE
+        binding.tvProgressStatus.visibility = View.GONE
     }
 
     private fun exportReport() {
@@ -339,32 +382,30 @@ class BenchmarkSpeechFragment : Fragment() {
         binding.tvResults.text = "暂无测试结果"
         binding.btnExportReport.visibility = View.GONE
         lastReport = null
+        selectedAudioData = null
+        selectedAudioName = ""
+        binding.tvAudioInfo.visibility = View.GONE
+        binding.tvTranscriptionResult.visibility = View.GONE
         updateStatus("结果已清空")
     }
 
     private fun setLoading(loading: Boolean) {
-        binding.btnSingleBenchmark.isEnabled = !loading
-        binding.btnBatchBenchmark.isEnabled = !loading
-        binding.btnBenchmarkWhisper.isEnabled = !loading
-        binding.btnBenchmarkParaformer.isEnabled = !loading
-        binding.btnBenchmarkVad.isEnabled = !loading
-        binding.progressBenchmark.visibility = if (loading) View.VISIBLE else View.GONE
+        binding.btnStartBenchmark.isEnabled = !loading
+        binding.btnRecordAudio.isEnabled = !loading
+        binding.btnSelectAudio.isEnabled = !loading
+        binding.btnUseTestAudio.isEnabled = !loading
     }
 
     private fun updateStatus(message: String) {
         binding.tvStatusArea.text = message
     }
 
-    private fun formatSize(bytes: Long): String {
-        return when {
-            bytes >= 1_000_000_000 -> "%.1fGB".format(bytes / 1_000_000_000.0)
-            bytes >= 1_000_000 -> "%.0fMB".format(bytes / 1_000_000.0)
-            else -> "$bytes B"
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
+        if (isRecording) {
+            audioRecorder?.stopRecording()
+            isRecording = false
+        }
         _binding = null
     }
 }

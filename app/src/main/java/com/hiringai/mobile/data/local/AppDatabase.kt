@@ -7,12 +7,14 @@ import androidx.room.RoomDatabase
 import com.hiringai.mobile.data.local.entity.JobEntity
 import com.hiringai.mobile.data.local.entity.CandidateEntity
 import com.hiringai.mobile.data.local.entity.MatchEntity
+import com.hiringai.mobile.data.local.entity.ApplicationEntity
 import com.hiringai.mobile.data.local.dao.JobDao
 import com.hiringai.mobile.data.local.dao.CandidateDao
 import com.hiringai.mobile.data.local.dao.MatchDao
+import com.hiringai.mobile.data.local.dao.ApplicationDao
 
 @Database(
-    entities = [JobEntity::class, CandidateEntity::class, MatchEntity::class],
+    entities = [JobEntity::class, CandidateEntity::class, MatchEntity::class, ApplicationEntity::class],
     version = 1,
     exportSchema = false
 )
@@ -20,6 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun jobDao(): JobDao
     abstract fun candidateDao(): CandidateDao
     abstract fun matchDao(): MatchDao
+    abstract fun applicationDao(): ApplicationDao
     
     companion object {
         @Volatile

@@ -46,6 +46,13 @@ class JobAdapter(
                 "closed" -> "已关闭"
                 else -> job.status
             }
+
+            // 显示画像标记
+            binding.tvProfileBadge.visibility = if (job.profile.isNotEmpty()) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
         }
     }
 

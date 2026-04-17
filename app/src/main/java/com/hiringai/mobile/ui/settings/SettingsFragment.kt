@@ -56,6 +56,7 @@ class SettingsFragment : Fragment() {
         setupDownloadButton()
         setupUnloadButton()
         setupTestButton()
+        setupBenchmarkButton()
         updateModelStatus()
     }
 
@@ -310,6 +311,16 @@ class SettingsFragment : Fragment() {
     private fun setupTestButton() {
         binding.btnTestModel.setOnClickListener {
             testModels()
+        }
+    }
+
+    private fun setupBenchmarkButton() {
+        binding.btnBenchmark.setOnClickListener {
+            // Navigate to unified benchmark hub
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, com.hiringai.mobile.ui.benchmark.BenchmarkHubFragment.newInstance())
+                .addToBackStack(null)
+                .commit()
         }
     }
 

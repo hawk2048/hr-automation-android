@@ -1,0 +1,393 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776392022849,
+  "projectRoot": "/mnt/d/work/AI Tools/claude/hr-automation-android",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Java/Kotlin",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "build.gradle"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "gradle",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "docs"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1776392022808,
+      "keyFiles": [
+        "build.gradle",
+        "lint.xml",
+        "proguard-rules.pro"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1776392022813,
+      "keyFiles": [
+        "ARCHITECTURE.md",
+        "ML_ON_ANDROID.md"
+      ]
+    },
+    "gradle": {
+      "path": "gradle",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776392022820,
+      "keyFiles": []
+    },
+    "app/build": {
+      "path": "app/build",
+      "purpose": "Build output",
+      "fileCount": 0,
+      "lastAccessed": 1776392022829,
+      "keyFiles": []
+    },
+    "app/src": {
+      "path": "app/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1776392022836,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/LocalImageModelService.kt",
+      "accessCount": 27,
+      "lastAccessed": 1776399184413,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\settings\\SettingsFragment.kt",
+      "accessCount": 24,
+      "lastAccessed": 1776132975971,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\candidates\\CandidatesFragment.kt",
+      "accessCount": 19,
+      "lastAccessed": 1776243157833,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/res/layout/fragment_benchmark_speech.xml",
+      "accessCount": 19,
+      "lastAccessed": 1776398814770,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 18,
+      "lastAccessed": 1776398524258,
+      "type": "directory"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ml\\LocalEmbeddingService.kt",
+      "accessCount": 16,
+      "lastAccessed": 1776136065162,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ui/MainActivity.kt",
+      "accessCount": 16,
+      "lastAccessed": 1776397012381,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/LocalLLMService.kt",
+      "accessCount": 12,
+      "lastAccessed": 1776399238501,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ui/settings/SettingsFragment.kt",
+      "accessCount": 11,
+      "lastAccessed": 1776396323643,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/res/menu/bottom_navigation.xml",
+      "accessCount": 8,
+      "lastAccessed": 1776397012447,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ml\\DeviceCapabilityDetector.kt",
+      "accessCount": 7,
+      "lastAccessed": 1776131549251,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/benchmark/LLMBenchmarkRunner.kt",
+      "accessCount": 7,
+      "lastAccessed": 1776396127007,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/LocalEmbeddingService.kt",
+      "accessCount": 7,
+      "lastAccessed": 1776399308812,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\fragment_settings.xml",
+      "accessCount": 6,
+      "lastAccessed": 1776133074547,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\fragment_candidates.xml",
+      "accessCount": 6,
+      "lastAccessed": 1776139198297,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/benchmark/SpeechBenchmark.kt",
+      "accessCount": 6,
+      "lastAccessed": 1776398094210,
+      "type": "file"
+    },
+    {
+      "path": "app/src/main/java/com/hiringai/mobile/ml/benchmark/BenchmarkResult.kt",
+      "accessCount": 6,
+      "lastAccessed": 1776398170492,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\jobs\\JobsFragment.kt",
+      "accessCount": 5,
+      "lastAccessed": 1776242979705,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java",
+      "accessCount": 4,
+      "lastAccessed": 1776135841831,
+      "type": "directory"
+    },
+    {
+      "path": "app/src/main/res/layout/fragment_settings.xml",
+      "accessCount": 4,
+      "lastAccessed": 1776394546934,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout",
+      "accessCount": 3,
+      "lastAccessed": 1776136171948,
+      "type": "directory"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\util\\PdfExtractor.kt",
+      "accessCount": 3,
+      "lastAccessed": 1776137442215,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\local\\dao\\Daos.kt",
+      "accessCount": 3,
+      "lastAccessed": 1776306451658,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\fragment_jobs.xml",
+      "accessCount": 2,
+      "lastAccessed": 1776133263531,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\local\\entity\\Entities.kt",
+      "accessCount": 2,
+      "lastAccessed": 1776136092561,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\matches\\MatchesFragment.kt",
+      "accessCount": 2,
+      "lastAccessed": 1776136404829,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ml\\LocalLLMService.kt",
+      "accessCount": 2,
+      "lastAccessed": 1776237312784,
+      "type": "directory"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\local\\AppDatabase.kt",
+      "accessCount": 2,
+      "lastAccessed": 1776237312839,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 2,
+      "lastAccessed": 1776237539665,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\repository\\MatchRepository.kt",
+      "accessCount": 2,
+      "lastAccessed": 1776306482048,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\wkliu\\.claude\\plans\\logical-churning-panda.md",
+      "accessCount": 1,
+      "lastAccessed": 1776132375260,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\values",
+      "accessCount": 1,
+      "lastAccessed": 1776133055178,
+      "type": "directory"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\local",
+      "accessCount": 1,
+      "lastAccessed": 1776133215632,
+      "type": "directory"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\item_job.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776133398877,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\jobs\\JobAdapter.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776133423137,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\item_candidate.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776133634400,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\candidates\\CandidateAdapter.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776133682180,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\fragment_matches.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776135897658,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\matches\\MatchAdapter.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776136149222,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\res\\layout\\item_match.xml",
+      "accessCount": 1,
+      "lastAccessed": 1776136242204,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\util",
+      "accessCount": 1,
+      "lastAccessed": 1776136823339,
+      "type": "directory"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1776237268433,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\MainActivity.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776237312769,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile",
+      "accessCount": 1,
+      "lastAccessed": 1776237676975,
+      "type": "directory"
+    },
+    {
+      "path": "C:\\Users\\wkliu\\.claude\\teams\\mvvm-refactor\\config.json",
+      "accessCount": 1,
+      "lastAccessed": 1776242203829,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\repository\\JobRepository.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776242493247,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\repository\\CandidateRepository.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776242493871,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\data\\repository\\ApplicationRepository.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776242495108,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\jobs\\JobsViewModel.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776242623260,
+      "type": "file"
+    },
+    {
+      "path": "app\\src\\main\\java\\com\\hiringai\\mobile\\ui\\candidates\\CandidatesViewModel.kt",
+      "accessCount": 1,
+      "lastAccessed": 1776242820909,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

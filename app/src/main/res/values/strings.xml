@@ -5,6 +5,7 @@
     <string name="nav_candidates">候选人</string>
     <string name="nav_matches">匹配</string>
     <string name="nav_settings">设置</string>
+    <string name="nav_benchmark">基准测试</string>
     <string name="empty_list">暂无数据</string>
     <string name="btn_run_match">运行匹配</string>
     <string name="btn_screen">初筛</string>
@@ -40,6 +41,37 @@
     <string name="settings_ollama_hint">Ollama 需在电脑或服务器上运行，手机通过网络连接</string>
     <string name="settings_ollama_url">Ollama 服务器地址</string>
     <string name="settings_save">保存</string>
+
+    <!-- Matching Center -->
+    <string name="matching_center_title">智能匹配中心</string>
+    <string name="tab_candidate_to_job">候选人 → 岗位</string>
+    <string name="tab_job_to_candidate">岗位 → 候选人</string>
+    <string name="select_candidate">选择候选人:</string>
+    <string name="select_job">选择职位:</string>
+    <string name="matching_results">匹配结果</string>
+    <string name="results_count_format">(%d个)</string>
+    <string name="empty_matching_results">暂无匹配结果，请先选择候选人/职位</string>
+    <string name="nav_matching">匹配</string>
+    <string name="no_candidates">暂无候选人</string>
+    <string name="no_jobs">暂无职位</string>
+    <string name="model_not_loaded">请先在设置中加载Embedding模型</string>
+    <string name="score_format">%d%%</string>
+    <string name="score_breakdown">匹配度分解</string>
+
+    <!-- Filter -->
+    <string name="filter_title">筛选条件</string>
+    <string name="filter_match_score">匹配度</string>
+    <string name="filter_match_score_default">0% - 100%</string>
+    <string name="filter_experience">工作年限</string>
+    <string name="filter_experience_default">0年 - 20年</string>
+    <string name="filter_education">学历要求</string>
+    <string name="filter_salary">薪资范围</string>
+    <string name="filter_recent_active">最近活跃</string>
+    <string name="filter_skills">关键技能</string>
+    <string name="filter_skills_hint">多个技能用逗号分隔</string>
+    <string name="filter_reset">重置</string>
+    <string name="filter_apply">应用筛选</string>
+    <string name="filter_results_count">筛选结果: %d个</string>
 
     <!-- About -->
     <string name="settings_about">关于</string>
