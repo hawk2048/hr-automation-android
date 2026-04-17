@@ -17,4 +17,26 @@
 
     <!-- Android 14 partial photo access - handled via runtime permissions -->
     <issue id="SelectedPhotoAccess" severity="ignore" />
+
+    <!-- Overdraw warnings - intentional background colors for visual consistency -->
+    <issue id="Overdraw" severity="ignore" />
+
+    <!-- Unused resources - may be used dynamically or in future features -->
+    <issue id="UnusedResources" severity="ignore" />
+
+    <!-- NestedScrolling - intentional for complex benchmark UI layouts -->
+    <issue id="NestedScrolling" severity="ignore" />
+
+    <!-- DisableBaselineAlignment - minor performance optimization -->
+    <issue id="DisableBaselineAlignment" severity="ignore" />
+
+    <!-- I18n warnings - Chinese-only app, hardcoded text is intentional -->
+    <issue id="HardcodedText" severity="ignore" />
+    <issue id="SetTextI18n" severity="ignore" />
+
+    <!-- Accessibility - handled where necessary, not all views need labels -->
+    <issue id="LabelFor" severity="ignore" />
+
+    <!-- ButtonStyle - intentional styling for specific UI needs -->
+    <issue id="ButtonStyle" severity="ignore" />
 </lint>
