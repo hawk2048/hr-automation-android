@@ -7,6 +7,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import com.hiringai.mobile.ml.acceleration.AccelerationConfig
+import com.hiringai.mobile.ml.acceleration.AcceleratorDetector
+import com.hiringai.mobile.ml.acceleration.GPUDelegateManager
+import com.hiringai.mobile.ml.acceleration.NNAPIManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -31,6 +35,11 @@ class LocalImageModelService(private val context: Context) {
     private var session: OrtSession? = null
     private var currentModelName: String = ""
     private var currentModelType: ModelType = ModelType.CLASSIFICATION
+
+    // Acceleration configuration
+    private var accelerationConfig: AccelerationConfig = AccelerationConfig.load(context)
+    private var currentBackend: AccelerationConfig.Backend = AccelerationConfig.Backend.CPU
+    private val acceleratorDetector: AcceleratorDetector by lazy { AcceleratorDetector(context) }
 
     enum class ModelType {
         OCR,
@@ -382,6 +391,7 @@ class LocalImageModelService(private val context: Context) {
 
     /**
      * 加载模型到内存
+     * 支持硬件加速：GPU -> NNAPI -> XNNPACK -> CPU
      */
     suspend fun loadModel(config: ImageModelConfig): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -400,8 +410,7 @@ class LocalImageModelService(private val context: Context) {
             unloadModel()
 
             env = OrtEnvironment.getEnvironment()
-            val sessionOptions = OrtSession.SessionOptions()
-            sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+            val sessionOptions = createSessionOptionsWithAcceleration()
 
             session = env?.createSession(modelFile.absolutePath, sessionOptions)
             currentModelName = config.name
@@ -410,7 +419,7 @@ class LocalImageModelService(private val context: Context) {
             // 保存加载状态
             saveLoadedModelName(context, config.name)
 
-            Log.i(TAG, "Image model loaded: ${config.name} (type: ${config.type})")
+            Log.i(TAG, "Image model loaded: ${config.name} (type: ${config.type}) with backend: $currentBackend")
             true
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "ONNX Runtime native library not found", e)
@@ -421,6 +430,80 @@ class LocalImageModelService(private val context: Context) {
             false
         }
     }
+
+    /**
+     * Create ONNX Runtime session options with hardware acceleration
+     * Implements fallback chain: GPU -> NNAPI -> XNNPACK -> CPU
+     */
+    private fun createSessionOptionsWithAcceleration(): OrtSession.SessionOptions {
+        val sessionOptions = OrtSession.SessionOptions()
+        sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+
+        // Get effective fallback chain from config
+        val fallbackChain = accelerationConfig.getEffectiveFallbackChain()
+
+        for (backend in fallbackChain) {
+            when (backend) {
+                AccelerationConfig.Backend.GPU -> {
+                    val gpuResult = GPUDelegateManager.createSessionOptions(context, enableXNNPACKFallback = false)
+                    if (gpuResult.usedGPU) {
+                        currentBackend = AccelerationConfig.Backend.GPU
+                        Log.i(TAG, "Using GPU acceleration")
+                        return gpuResult.sessionOptions ?: sessionOptions
+                    }
+                    Log.d(TAG, "GPU not available, trying next backend")
+                }
+                AccelerationConfig.Backend.NNAPI -> {
+                    if (NNAPIManager.isNNAPISafe(context)) {
+                        val nnapiOptions = NNAPIManager.createSafeSessionOptions(context)
+                        if (nnapiOptions != null) {
+                            currentBackend = AccelerationConfig.Backend.NNAPI
+                            Log.i(TAG, "Using NNAPI acceleration")
+                            return nnapiOptions
+                        }
+                    }
+                    Log.d(TAG, "NNAPI not safe, trying next backend")
+                }
+                AccelerationConfig.Backend.XNNPACK -> {
+                    // XNNPACK is enabled by default in ONNX Runtime Android
+                    currentBackend = AccelerationConfig.Backend.XNNPACK
+                    sessionOptions.setIntraOpNumThreads(accelerationConfig.globalSettings.defaultThreads)
+                    Log.i(TAG, "Using XNNPACK CPU optimization")
+                    return sessionOptions
+                }
+                AccelerationConfig.Backend.CPU -> {
+                    currentBackend = AccelerationConfig.Backend.CPU
+                    sessionOptions.setIntraOpNumThreads(accelerationConfig.globalSettings.defaultThreads)
+                    Log.i(TAG, "Using CPU-only mode")
+                    return sessionOptions
+                }
+            }
+        }
+
+        // Fallback to CPU
+        currentBackend = AccelerationConfig.Backend.CPU
+        sessionOptions.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors())
+        Log.i(TAG, "Using CPU fallback")
+        return sessionOptions
+    }
+
+    /**
+     * Get current acceleration backend
+     */
+    fun getCurrentBackend(): AccelerationConfig.Backend = currentBackend
+
+    /**
+     * Set acceleration configuration
+     */
+    fun setAccelerationConfig(config: AccelerationConfig) {
+        this.accelerationConfig = config
+        AccelerationConfig.save(context, config)
+    }
+
+    /**
+     * Get acceleration configuration
+     */
+    fun getAccelerationConfig(): AccelerationConfig = accelerationConfig
 
     /**
      * 卸载模型

@@ -12,6 +12,10 @@ import android.media.MediaRecorder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.hiringai.mobile.SafeNativeLoader
+import com.hiringai.mobile.ml.acceleration.AccelerationConfig
+import com.hiringai.mobile.ml.acceleration.AcceleratorDetector
+import com.hiringai.mobile.ml.acceleration.GPUDelegateManager
+import com.hiringai.mobile.ml.acceleration.NNAPIManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -190,6 +194,10 @@ class LocalSpeechService private constructor(private val context: Context) {
     private var loadedModelType: SpeechModelType? = null
     private var loadedModelConfig: SpeechModelConfig? = null
 
+    // Acceleration configuration
+    private var accelerationConfig: AccelerationConfig = AccelerationConfig.load(context)
+    private var currentBackend: AccelerationConfig.Backend = AccelerationConfig.Backend.CPU
+
     val isModelLoaded: Boolean get() = session != null && loadedModelName.isNotEmpty()
 
     fun getLoadedModelName(): String = loadedModelName
@@ -273,6 +281,7 @@ class LocalSpeechService private constructor(private val context: Context) {
 
     /**
      * 加载模型到内存
+     * 支持硬件加速：GPU -> NNAPI -> XNNPACK -> CPU
      */
     suspend fun loadModel(config: SpeechModelConfig): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -291,16 +300,14 @@ class LocalSpeechService private constructor(private val context: Context) {
             unloadModel()
 
             env = OrtEnvironment.getEnvironment()
-            val sessionOptions = OrtSession.SessionOptions()
-            sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-            sessionOptions.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors())
+            val sessionOptions = createSessionOptionsWithAcceleration()
 
             session = env?.createSession(modelFile.absolutePath, sessionOptions)
             loadedModelName = config.name
             loadedModelType = config.type
             loadedModelConfig = config
 
-            Log.i(TAG, "Speech model loaded: ${config.name} (type: ${config.type})")
+            Log.i(TAG, "Speech model loaded: ${config.name} (type: ${config.type}) with backend: $currentBackend")
             true
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "ONNX Runtime native library not found", e)
@@ -311,6 +318,80 @@ class LocalSpeechService private constructor(private val context: Context) {
             false
         }
     }
+
+    /**
+     * Create ONNX Runtime session options with hardware acceleration
+     * Implements fallback chain: GPU -> NNAPI -> XNNPACK -> CPU
+     */
+    private fun createSessionOptionsWithAcceleration(): OrtSession.SessionOptions {
+        val sessionOptions = OrtSession.SessionOptions()
+        sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+
+        // Get effective fallback chain from config
+        val fallbackChain = accelerationConfig.getEffectiveFallbackChain()
+
+        for (backend in fallbackChain) {
+            when (backend) {
+                AccelerationConfig.Backend.GPU -> {
+                    val gpuResult = GPUDelegateManager.createSessionOptions(context, enableXNNPACKFallback = false)
+                    if (gpuResult.usedGPU) {
+                        currentBackend = AccelerationConfig.Backend.GPU
+                        Log.i(TAG, "Using GPU acceleration")
+                        return gpuResult.sessionOptions ?: sessionOptions
+                    }
+                    Log.d(TAG, "GPU not available, trying next backend")
+                }
+                AccelerationConfig.Backend.NNAPI -> {
+                    if (NNAPIManager.isNNAPISafe(context)) {
+                        val nnapiOptions = NNAPIManager.createSafeSessionOptions(context)
+                        if (nnapiOptions != null) {
+                            currentBackend = AccelerationConfig.Backend.NNAPI
+                            Log.i(TAG, "Using NNAPI acceleration")
+                            return nnapiOptions
+                        }
+                    }
+                    Log.d(TAG, "NNAPI not safe, trying next backend")
+                }
+                AccelerationConfig.Backend.XNNPACK -> {
+                    // XNNPACK is enabled by default in ONNX Runtime Android
+                    currentBackend = AccelerationConfig.Backend.XNNPACK
+                    sessionOptions.setIntraOpNumThreads(accelerationConfig.globalSettings.defaultThreads)
+                    Log.i(TAG, "Using XNNPACK CPU optimization")
+                    return sessionOptions
+                }
+                AccelerationConfig.Backend.CPU -> {
+                    currentBackend = AccelerationConfig.Backend.CPU
+                    sessionOptions.setIntraOpNumThreads(accelerationConfig.globalSettings.defaultThreads)
+                    Log.i(TAG, "Using CPU-only mode")
+                    return sessionOptions
+                }
+            }
+        }
+
+        // Fallback to CPU
+        currentBackend = AccelerationConfig.Backend.CPU
+        sessionOptions.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors())
+        Log.i(TAG, "Using CPU fallback")
+        return sessionOptions
+    }
+
+    /**
+     * Get current acceleration backend
+     */
+    fun getCurrentBackend(): AccelerationConfig.Backend = currentBackend
+
+    /**
+     * Set acceleration configuration
+     */
+    fun setAccelerationConfig(config: AccelerationConfig) {
+        this.accelerationConfig = config
+        AccelerationConfig.save(context, config)
+    }
+
+    /**
+     * Get acceleration configuration
+     */
+    fun getAccelerationConfig(): AccelerationConfig = accelerationConfig
 
     /**
      * 卸载模型
