@@ -120,10 +120,8 @@ class DeviceCapabilityDetector(private val context: Context) {
                 gpuName = "${Build.MANUFACTURER} ${Build.MODEL}"
             }
 
-            // Check for Vulkan (Android 7.0+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                hasVulkan = true // Most modern devices support Vulkan
-            }
+            // Vulkan support - all Android 8.0+ devices support Vulkan
+            hasVulkan = true
 
         } catch (e: Exception) {
             Log.e(TAG, "Error detecting GPU", e)

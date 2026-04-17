@@ -29,9 +29,9 @@
     <!-- Salary range options -->
     <string-array name="salary_options">
         <item>不限</item>
-        <item>10-20K</item>
-        <item>20-40K</item>
-        <item>40-60K</item>
+        <item>10–20K</item>
+        <item>20–40K</item>
+        <item>40–60K</item>
         <item>60K+</item>
     </string-array>
 

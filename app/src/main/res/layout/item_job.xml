@@ -71,7 +71,7 @@
             android:paddingVertical="2dp"
             android:text="已生成画像"
             android:textColor="@android:color/white"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:visibility="gone"
             app:layout_constraintTop_toBottomOf="@id/tv_job_requirements"
             app:layout_constraintStart_toEndOf="@id/tv_candidates_count"

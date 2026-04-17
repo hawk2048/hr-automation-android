@@ -24,10 +24,13 @@
     <string name="settings_download_model">下载模型</string>
     <string name="settings_download_embedding">下载 Embedding 模型</string>
     <string name="settings_model_not_downloaded">模型未下载</string>
+    <!-- LLM status strings - used dynamically in code -->
     <string name="settings_llm_downloaded">LLM 模型已下载，点击加载</string>
     <string name="settings_llm_loaded">LLM 已加载: %s</string>
     <string name="settings_embedding_downloaded">Embedding 模型已下载，点击加载</string>
     <string name="settings_embedding_loaded">Embedding 模型已加载</string>
+    <!-- Matching score breakdown - used in adapter -->
+    <string name="score_breakdown">匹配度分解</string>
     <string name="settings_load_models">加载已下载的模型</string>
     <string name="settings_models_loaded">LLM + Embedding 模型已加载</string>
     <string name="settings_llm_loaded_only">LLM 模型已加载</string>

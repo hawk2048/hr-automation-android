@@ -15,6 +15,7 @@
     <color name="score_excellent">#4CAF50</color>
     <color name="score_good">#8BC34A</color>
     <color name="score_average">#FFC107</color>
+    <!-- score_poor used in MatchAdapter for medium scores -->
     <color name="score_poor">#FF9800</color>
     <color name="score_bad">#F44336</color>
 

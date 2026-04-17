@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="已生成画像"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:textColor="@android:color/white"
             android:background="@color/primary"
             android:paddingHorizontal="8dp"

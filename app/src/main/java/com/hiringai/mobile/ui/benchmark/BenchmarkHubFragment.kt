@@ -18,6 +18,7 @@ import com.hiringai.mobile.ml.speech.SpeechRecognitionService
 import com.hiringai.mobile.ml.benchmark.LLMBenchmarkRunner
 import com.hiringai.mobile.ml.benchmark.LLMBenchmarkResult
 import com.hiringai.mobile.ml.benchmark.BatchBenchmarkReport
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -601,7 +602,8 @@ class BenchmarkHubFragment : Fragment() {
             appendLine("-".repeat(60))
 
             allResults.forEach { r ->
-                appendLine(String.format("%-25s %-8s %10d %12d %10d %8s",
+                @Suppress("DefaultLocale")
+                appendLine(String.format(Locale.ROOT, "%-25s %-8s %10d %12d %10d %8s",
                     r.modelName.take(25),
                     r.category,
                     r.loadTimeMs,

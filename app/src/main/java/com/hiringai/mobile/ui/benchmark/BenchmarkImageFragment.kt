@@ -18,6 +18,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import java.util.Locale
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -178,8 +179,9 @@ class BenchmarkImageFragment : Fragment() {
     }
 
     private fun selectImageFromGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        intent.type = "image/*"
+        val intent = Intent(Intent.ACTION_PICK).apply {
+            setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
+        }
         selectImageLauncher.launch(Intent.createChooser(intent, "选择测试图像"))
     }
 
@@ -626,7 +628,8 @@ class BenchmarkImageFragment : Fragment() {
             appendLine("-".repeat(60))
 
             benchmarkResults.forEach { result ->
-                appendLine(String.format("%-25s %10d %12d %10.2f",
+                @Suppress("DefaultLocale")
+                appendLine(String.format(Locale.ROOT, "%-25s %10d %12d %10.2f",
                     result.modelName.take(25),
                     result.loadTimeMs,
                     result.inferenceTimeMs,
