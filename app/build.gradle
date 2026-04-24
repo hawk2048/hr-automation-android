@@ -129,11 +129,14 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 
-    // ML — On-device LLM (llama.cpp via Kotlin binding)
-    implementation 'org.codeshipping:llama-kotlin-android:0.1.3'
+    // ML — HiringAI ML Kit submodule
+    implementation project(':hiringai-ml-kit:ml')
 
-    // ML — On-device Embedding (ONNX Runtime) — NNAPI disabled in code, CPU-only
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.24.3'
+    // ML — On-device LLM (llama.cpp via Kotlin binding) — now via ML Kit submodule
+    // implementation 'org.codeshipping:llama-kotlin-android:0.1.3'
+
+    // ML — On-device Embedding (ONNX Runtime) — now via ML Kit submodule
+    // implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.24.3'
 
     // PDF parsing for resume extraction
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
