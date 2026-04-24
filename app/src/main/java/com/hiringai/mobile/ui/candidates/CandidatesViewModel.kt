@@ -10,6 +10,7 @@ import com.hiringai.mobile.data.local.entity.ApplicationEntity
 import com.hiringai.mobile.data.repository.CandidateRepository
 import com.hiringai.mobile.data.repository.ApplicationRepository
 import com.hiringai.mobile.ml.LocalLLMService
+import com.hiringai.mobile.ml.bridge.CandidateInfo
 import com.hiringai.mobile.util.PdfExtractor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -93,7 +94,7 @@ class CandidatesViewModel(
     fun generateProfile(candidate: CandidateEntity, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                val profile = llmService.generateCandidateProfile(candidate)
+                val profile = llmService.generateCandidateProfile(CandidateInfo(name = candidate.name, email = candidate.email, phone = candidate.phone, resume = candidate.resume))
                 candidateRepository.update(candidate.copy(profile = profile))
                 loadCandidates()
                 onComplete(profile)

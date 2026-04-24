@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.hiringai.mobile.data.local.entity.JobEntity
 import com.hiringai.mobile.data.repository.JobRepository
 import com.hiringai.mobile.ml.LocalLLMService
+import com.hiringai.mobile.ml.bridge.JobInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,7 +78,7 @@ class JobsViewModel(
     fun generateProfile(job: JobEntity, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                val profile = llmService.generateJobProfile(job)
+                val profile = llmService.generateJobProfile(JobInfo(title = job.title, requirements = job.requirements))
                 repository.update(job.copy(profile = profile))
                 loadJobs()
                 onComplete(profile)
