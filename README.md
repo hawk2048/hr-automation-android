@@ -59,16 +59,16 @@
 
 | 类别 | 技术 | 版本 |
 |------|------|------|
-| 语言 | Kotlin | 1.9.22 |
+| 语言 | Kotlin | 2.0.21 |
 | 最低 SDK | Android 8.0 (API 26) | — |
 | 目标 SDK | Android 15 (API 35) | — |
-| 构建 | Gradle 8.4 + AGP 8.2.2 | — |
-| 注解处理 | KSP | 1.9.22-1.0.17 |
-| UI | Material Components | 1.11.0 |
+| 构建 | Gradle 8.11.1 + AGP 8.9.1 | — |
+| 注解处理 | KSP | 2.0.21-1.0.28 |
+| UI | Material Components | 1.12.0 |
 | 数据库 | Room | 2.6.1 |
 | 网络 | Retrofit + OkHttp | 2.11.0 / 4.12.0 |
-| 异步 | Kotlin Coroutines | 1.7.3 |
-| 导航 | Navigation Component | 2.7.7 |
+| 异步 | Kotlin Coroutines | 1.9.0 |
+| 导航 | Navigation Component | 2.8.5 |
 | 序列化 | Gson | 2.10.1 |
 | CI/CD | GitHub Actions | — |
 
@@ -77,45 +77,50 @@
 ```
 hr-automation-android/
 ├── .github/workflows/
-│   ├── ci.yml                    # CI：push/PR 自动构建 + 测试
-│   └── release.yml               # CD：tag 触发自动发布 Release
+│   ├── ci.yml                    # CI：lint + test + build 三阶段流水线
+│   ├── release.yml               # CD：tag 触发自动发布 Release
+│   └── code-quality.yml          # 代码质量：Detekt + 依赖审查
 ├── app/
-│   ├── build.gradle              # 模块构建配置（依赖、签名、SDK 版本）
+│   ├── build.gradle              # 模块构建配置（依赖、签名、SDK 版本、Detekt）
 │   ├── lint.xml                  # Lint 规则配置
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/com/hiringai/mobile/
-│       │   ├── HiringAIApplication.kt
-│       │   ├── data/local/
-│       │   │   ├── AppDatabase.kt          # Room 数据库（singleton）
-│       │   │   ├── dao/
-│       │   │   │   └── Daos.kt             # JobDao, CandidateDao, MatchDao
-│       │   │   └── entity/
-│       │   │       └── Entities.kt         # JobEntity, CandidateEntity, MatchEntity
-│       │   ├── ml/
-│       │   │   ├── LocalLLMService.kt      # LLM 推理（llama.cpp / Ollama）
-│       │   │   └── LocalEmbeddingService.kt # Embedding 向量计算（ONNX）
-│       │   └── ui/
-│       │       ├── MainActivity.kt         # 主 Activity + BottomNavigation
-│       │       ├── candidates/CandidatesFragment.kt
-│       │       ├── jobs/JobsFragment.kt
-│       │       ├── matches/MatchesFragment.kt
-│       │       └── settings/SettingsFragment.kt
-│       └── res/
-│           ├── layout/                     # XML 布局文件
-│           ├── mipmap-anydpi/              # Adaptive Icon（含 monochrome）
-│           ├── navigation/                 # Navigation 图
-│           ├── values/                     # strings, colors, themes
-│           └── xml/                        # 其他配置
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml
+│       │   ├── java/com/hiringai/mobile/
+│       │   │   ├── HiringAIApplication.kt
+│       │   │   ├── data/local/
+│       │   │   │   ├── AppDatabase.kt          # Room 数据库（singleton）
+│       │   │   │   ├── dao/
+│       │   │   │   │   └── Daos.kt             # JobDao, CandidateDao, MatchDao
+│       │   │   │   └── entity/
+│       │   │   │       └── Entities.kt         # JobEntity, CandidateEntity, MatchEntity
+│       │   │   ├── ml/
+│       │   │   │   ├── LocalLLMService.kt      # LLM 推理（llama.cpp / Ollama）
+│       │   │   │   └── LocalEmbeddingService.kt # Embedding 向量计算（ONNX）
+│       │   │   └── ui/
+│       │   │       ├── MainActivity.kt         # 主 Activity + BottomNavigation
+│       │   │       ├── candidates/CandidatesFragment.kt
+│       │   │       ├── jobs/JobsFragment.kt
+│       │   │       ├── matches/MatchesFragment.kt
+│       │   │       └── settings/SettingsFragment.kt
+│       │   └── res/
+│       │       ├── layout/                     # XML 布局文件
+│       │       ├── mipmap-anydpi/              # Adaptive Icon（含 monochrome）
+│       │       ├── navigation/                 # Navigation 图
+│       │       ├── values/                     # strings, colors, themes
+│       │       └── xml/                        # 其他配置
+│       ├── test/                               # 单元测试（JVM）
+│       └── androidTest/                        # 仪器测试（设备/模拟器）
 ├── gradle/wrapper/
-│   └── gradle-wrapper.properties           # Gradle 8.4
-├── build.gradle                            # 根级构建（插件声明）
-├── settings.gradle                         # 项目设置
-├── gradle.properties                       # 全局 Gradle 配置
-├── README.md                               # 本文件
-├── RELEASE.md                              # CI/CD 发布说明
-├── CHANGELOG.md                            # 变更日志
-└── CONTRIBUTING.md                         # 贡献指南
+│   └── gradle-wrapper.properties               # Gradle 8.11.1
+├── build.gradle                                # 根级构建（插件声明）
+├── settings.gradle                             # 项目设置
+├── gradle.properties                           # 全局 Gradle 配置
+├── detekt.yml                                  # Detekt 静态分析配置
+├── README.md                                   # 本文件
+├── RELEASE.md                                  # CI/CD 发布说明
+├── CHANGELOG.md                                # 变更日志
+└── CONTRIBUTING.md                             # 贡献指南
 ```
 
 ## 构建与运行
@@ -124,8 +129,8 @@ hr-automation-android/
 
 - Android Studio Hedgehog (2023.1.1) 或更新
 - JDK 17
-- Android SDK：compileSdk 35, minSdk 26
-- Gradle 8.4（项目自带 wrapper）
+- Android SDK：compileSdk 36, minSdk 26
+- Gradle 8.11.1（项目自带 wrapper）
 
 ### 本地构建
 

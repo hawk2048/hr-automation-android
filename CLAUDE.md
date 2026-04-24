@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Primary Language**: Kotlin 2.0.21
 - **Min SDK**: Android 8.0 (API 26)
 - **Target SDK**: Android 15 (API 35)
-- **Build System**: Gradle 8.4 + AGP 8.9.1
+- **Build System**: Gradle 8.11.1 + AGP 8.9.1
 - **Architecture**: Single Activity + Multiple Fragments with ViewBinding
 
 ## Build Commands

@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -39,7 +43,7 @@ jobs:
       - name: Install SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;35.0.0"
+          sdkmanager "platforms;android-36" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract version from tag
         id: version
@@ -61,17 +65,48 @@ jobs:
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Build Release APK
+        id: build
         env:
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION }}
-        run: gradle clean assembleRelease --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle clean assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build-release.log
+          BUILD_EXIT=${PIPESTATUS[0]}
+          echo "build_exit=$BUILD_EXIT" >> $GITHUB_OUTPUT
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "===== BUILD FAILED ====="
+            cat /tmp/build-release.log
+            exit $BUILD_EXIT
+          fi
+
+      - name: Verify APK signing
+        if: success()
+        run: |
+          APK_DIR="app/build/outputs/apk/release"
+          echo "Verifying APK signatures..."
+          for apk in "$APK_DIR"/*.apk; do
+            if [ -f "$apk" ]; then
+              echo "=== $apk ==="
+              # Check APK exists and is valid zip
+              unzip -t "$apk" > /dev/null 2>&1 && echo "  Valid ZIP/APK" || echo "  WARNING: Invalid APK"
+              # Check signing info
+              if command -v apksigner &> /dev/null; then
+                apksigner verify --print-certs "$apk" 2>&1 || true
+              elif [ -n "$ANDROID_HOME" ]; then
+                $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs "$apk" 2>&1 || true
+              else
+                echo "  apksigner not available, skipping verification"
+              fi
+            fi
+          done
 
       - name: Find APK
         id: apk
+        if: success()
         run: |
           echo "Listing all APK files:"
           find . -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere!"
-          # Upload all release APKs (split by ABI)
           APK_DIR="app/build/outputs/apk/release"
           if [ ! -d "$APK_DIR" ]; then
             echo "ERROR: No release APK directory found"
@@ -82,7 +117,24 @@ jobs:
           ls -lh "$APK_DIR"/*.apk 2>/dev/null || echo "No APKs found"
           echo "APK_DIR=$APK_DIR" >> $GITHUB_OUTPUT
 
+      - name: Upload mapping file
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-${{ steps.version.outputs.TAG }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 90
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build-log-${{ steps.version.outputs.TAG }}
+          path: /tmp/build-release.log
+          retention-days: 30
+
       - name: Generate Changelog
+        id: changelog
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
@@ -123,6 +175,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Print download info
+        if: success()
         run: |
           echo "=========================================="
           echo "Release created successfully!"

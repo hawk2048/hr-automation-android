@@ -62,3 +62,9 @@ models/
 embedding/
 *.gguf
 *.onnx
+
+# Detekt baseline (generated, update when needed)
+detekt-baseline.xml
+
+# OMC (local tool cache)
+.omc/
