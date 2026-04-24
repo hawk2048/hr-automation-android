@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-04-24
+
+### Added
+
+- **ML 子模块剥离**：ML 代码从 `app/` 模块完全剥离到独立 Git 子模块 `hiringai-ml-kit/`，通过 Bridge 模式 (MlBridge + JobInfo/CandidateInfo) 与主应用解耦
+- **基准测试中心**：LLM/语音/图像/加速后端全面性能基准测试 UI
+- **准确度评估**：BLEU/WER/Top-K Accuracy 指标 + GroundTruthMatcher + LibriSpeech/MiniImageNet 数据集
+- **双向匹配中心**：候选人↔岗位双向匹配 UI (ViewPager2 + TabLayout)
+- **匹配度可视化**：技能/经验/学历匹配度分解显示 + 雷达图
+- **模型目录系统** (hiringai-ml-kit)：国内模型源 ModelScope + OpenXLab，本地 JSON 缓存，分类搜索
+- **日志系统** (hiringai-ml-kit)：5 级日志 + 环形缓冲区 + 文件持久化 + SharedFlow 实时流
+- **基准测试 v2** (hiringai-ml-kit)：子阶段进度（下载→加载→推理→清理），DetailedBenchmarkProgress
+- **模型详情增强** (hiringai-ml-kit)：CatalogModel 新增 updatedAt/downloads/framework/version 字段 + inferredTags/inferredFramework 计算属性
+- **MVVM 重构** (hiringai-ml-kit app)：BenchmarkViewModel + ModelItemAdapter + ModelDetailBottomSheet 替代 LinearLayout+CheckBox
+- **独立测试 APK** (hiringai-ml-kit)：standaloneBuild=true 模式，含设备信息/基准测试/模型目录/日志查看
+- **CI/CD** (hiringai-ml-kit)：GitHub Actions 自动 lint + test + AAR + APK + release
+
+### Changed
+
+- ViewModel 调用 ML 服务改为通过 MlBridge 传入 JobInfo/CandidateInfo
+- SafeNativeLoader 存在两个版本：主仓库版 (Application 单例) 和子模块版 (Context 参数)
+- ModelSelectionDialog.kt 已从 ml/ 库删除，UI 组件移至 app/ 层
+
 ## [1.1.6] - 2026-04-13
 
 ### Fixed

@@ -2,6 +2,16 @@
 
 本文档详细描述了 HRAutomation Android 应用中本地 LLM 和 Embedding 模型的加载、推理、交互控制等技术实现。
 
+> **⚠️ 架构变更说明 (2026-04)**
+> 
+> ML 代码已从主仓库 `app/` 模块剥离到独立 Git 子模块 `hiringai-ml-kit/`。
+> - 所有 ML 服务代码位于 `hiringai-ml-kit/ml/src/main/java/com/hiringai/mobile/ml/`
+> - 主仓库通过 `implementation project(':hiringai-ml-kit:ml')` 引用
+> - 业务实体通过 `MlBridge` (JobInfo/CandidateInfo) 与 ML 层解耦
+> - SafeNativeLoader 存在两个版本：主仓库版 (`com.hiringai.mobile`) 和子模块版 (`com.hiringai.mobile.ml`)
+> - 模型选择 UI 已从 `ModelSelectionDialog` 迁移到 app 层的 ViewModel + RecyclerView + BottomSheet
+> - 新增：模型目录系统 (ModelCatalogService)、日志系统 (MlLogger)、基准测试 v2 (子阶段进度)
+
 ## 1. 技术选型
 
 ### 1.1 LLM 推理：llama.cpp
