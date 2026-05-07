@@ -14,4 +14,16 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <com.github.mikephil.charting.charts.PieChart
+        android:id="@+id/pie_chart"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <com.github.mikephil.charting.charts.RadarChart
+        android:id="@+id/radar_chart"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
 </FrameLayout>

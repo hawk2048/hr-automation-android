@@ -559,7 +559,11 @@ class BenchmarkDashboardFragment : Fragment() {
     }
 
     private fun showCompareDialog() {
-        Toast.makeText(requireContext(), "对比分析功能开发中...", Toast.LENGTH_SHORT).show()
+        val fragment = ModelCompareFragment.newInstance()
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun createTestBitmap(width: Int, height: Int): android.graphics.Bitmap {
