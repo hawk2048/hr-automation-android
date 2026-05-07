@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -15,7 +16,7 @@ import com.hiringai.mobile.databinding.FragmentBenchmarkDashboardBinding
 import com.hiringai.mobile.ml.LocalLLMService
 import com.hiringai.mobile.ml.LocalImageModelService
 import com.hiringai.mobile.ml.SpeechModelService
-import com.hiringai.mobile.ml.benchmark.*
+import com.hiringai.mobile.ui.benchmark.BenchmarkChartView.ChartType.BAR
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -24,16 +25,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * AI模型批量运行性能测试仪表板
- *
- * 功能：
- * 1. 语音模型 (Whisper/Paraformer/Cam++) 测试入口和报告
- * 2. 图像模型 (Vision Transformer/SD/图像理解) 测试入口
- * 3. Gemma/Qwen 等 LLM 性能测试入口
- * 4. 一键批量测试所有模型
- * 5. 测试报告汇总和导出
- */
 class BenchmarkDashboardFragment : Fragment() {
 
     private var _binding: FragmentBenchmarkDashboardBinding? = null
@@ -80,15 +71,14 @@ class BenchmarkDashboardFragment : Fragment() {
 
         setupButtons()
         updateModelStatuses()
+        updateQuickStats()
     }
 
     private fun setupButtons() {
-        // 批量测试按钮
         binding.btnRunAllBenchmarks.setOnClickListener {
             runBatchBenchmarks()
         }
 
-        // 单独测试入口
         binding.btnSpeechBenchmark.setOnClickListener {
             navigateToBenchmark(BenchmarkType.SPEECH)
         }
@@ -101,7 +91,6 @@ class BenchmarkDashboardFragment : Fragment() {
             navigateToBenchmark(BenchmarkType.LLM)
         }
 
-        // 导出和清除
         binding.btnExportReport.setOnClickListener {
             exportReport()
         }
@@ -110,43 +99,75 @@ class BenchmarkDashboardFragment : Fragment() {
             clearReport()
         }
 
-        // 取消批量测试
         binding.btnCancelBatch.setOnClickListener {
             cancelBatchTest()
+        }
+
+        binding.btnCompareModels.setOnClickListener {
+            showCompareDialog()
         }
     }
 
     private fun updateModelStatuses() {
-        // 更新 LLM 状态
         val llmService = LocalLLMService.getInstance(requireContext())
         val llmDownloaded = LocalLLMService.AVAILABLE_MODELS.any { llmService.isModelDownloaded(it.name) }
         val llmLoaded = llmService.isModelLoaded
 
-        binding.tvLlmStatus.text = when {
-            llmLoaded -> "状态: ✓ 已加载 ${llmService.getLoadedModelName()}"
-            llmDownloaded -> "状态: ✓ 已下载模型，待加载"
-            else -> "状态: 未下载模型"
+        when {
+            llmLoaded -> {
+                binding.chipLlmStatus.setStatus(ModelStatusChip.Status.COMPLETED)
+                binding.tvLlmStatus.text = "状态: ✓ 已加载 ${llmService.getLoadedModelName()}"
+            }
+            llmDownloaded -> {
+                binding.chipLlmStatus.setStatus(ModelStatusChip.Status.IDLE)
+                binding.tvLlmStatus.text = "状态: ✓ 已下载模型，待加载"
+            }
+            else -> {
+                binding.chipLlmStatus.setStatus(ModelStatusChip.Status.NOT_INSTALLED)
+                binding.tvLlmStatus.text = "状态: 未下载模型"
+            }
         }
 
-        // 更新图像模型状态
         val imageDownloaded = LocalImageModelService.AVAILABLE_MODELS.any { imageModelService.isModelDownloaded(it.name) }
         val imageLoaded = imageModelService.isModelLoaded
 
-        binding.tvImageStatus.text = when {
-            imageLoaded -> "状态: ✓ 已加载 ${imageModelService.getLoadedModelName()}"
-            imageDownloaded -> "状态: ✓ 已下载模型，待加载"
-            else -> "状态: 未下载模型"
+        when {
+            imageLoaded -> {
+                binding.chipImageStatus.setStatus(ModelStatusChip.Status.COMPLETED)
+                binding.tvImageStatus.text = "状态: ✓ 已加载 ${imageModelService.getLoadedModelName()}"
+            }
+            imageDownloaded -> {
+                binding.chipImageStatus.setStatus(ModelStatusChip.Status.IDLE)
+                binding.tvImageStatus.text = "状态: ✓ 已下载模型，待加载"
+            }
+            else -> {
+                binding.chipImageStatus.setStatus(ModelStatusChip.Status.NOT_INSTALLED)
+                binding.tvImageStatus.text = "状态: 未下载模型"
+            }
         }
 
-        // 更新语音模型状态
         val speechDownloaded = SpeechModelService.AVAILABLE_MODELS.any { speechModelService.isModelDownloaded(it.name) }
         val speechLoaded = speechModelService.isModelLoaded
 
-        binding.tvSpeechStatus.text = when {
-            speechLoaded -> "状态: ✓ 已加载 ${speechModelService.getLoadedModelName()}"
-            speechDownloaded -> "状态: ✓ 已下载模型，待加载"
-            else -> "状态: Android TTS 可用，Whisper/Paraformer 待下载"
+        when {
+            speechLoaded -> {
+                binding.chipSpeechStatus.setStatus(ModelStatusChip.Status.COMPLETED)
+                binding.tvSpeechStatus.text = "状态: ✓ 已加载 ${speechModelService.getLoadedModelName()}"
+            }
+            speechDownloaded -> {
+                binding.chipSpeechStatus.setStatus(ModelStatusChip.Status.IDLE)
+                binding.tvSpeechStatus.text = "状态: ✓ 已下载模型，待加载"
+            }
+            else -> {
+                binding.chipSpeechStatus.setStatus(ModelStatusChip.Status.IDLE)
+                binding.tvSpeechStatus.text = "状态: Android TTS 可用，Whisper/Paraformer 待下载"
+            }
         }
+    }
+
+    private fun updateQuickStats() {
+        val deviceInfo = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+        binding.tvDeviceInfo.text = deviceInfo
     }
 
     private fun navigateToBenchmark(type: BenchmarkType) {
@@ -166,39 +187,51 @@ class BenchmarkDashboardFragment : Fragment() {
         batchResults.clear()
 
         binding.cardBatchProgress.visibility = View.VISIBLE
+        binding.cardBatchTest.visibility = View.GONE
         binding.btnRunAllBenchmarks.isEnabled = false
         binding.progressBatch.progress = 0
+        binding.progressRing.setProgress(0f)
+        binding.progressRing.setCenterText("0%")
+        binding.progressRing.setStageText("准备测试...")
+        binding.resourceMonitor.startMonitoring()
 
         batchJob = lifecycleScope.launch {
             try {
-                val totalSteps = 3
+                val totalSteps = 100
                 var currentStep = 0
 
-                // 1. 语音模型测试
-                updateBatchProgress("正在测试语音模型...", currentStep, totalSteps)
+                binding.chipLlmStatus.setStatus(ModelStatusChip.Status.TESTING)
+                binding.chipImageStatus.setStatus(ModelStatusChip.Status.TESTING)
+                binding.chipSpeechStatus.setStatus(ModelStatusChip.Status.TESTING)
+
+                updateBatchProgress("正在测试语音模型...", "语音", "加载", currentStep)
+
                 runSpeechBenchmark()
-                currentStep++
+                currentStep += 33
 
-                // 2. 图像模型测试
-                updateBatchProgress("正在测试图像模型...", currentStep, totalSteps)
+                updateBatchProgress("正在测试图像模型...", "图像", "推理", currentStep)
+
                 runImageBenchmark()
-                currentStep++
+                currentStep += 33
 
-                // 3. LLM 测试
-                updateBatchProgress("正在测试LLM模型...", currentStep, totalSteps)
+                updateBatchProgress("正在测试LLM模型...", "LLM", "推理", currentStep)
+
                 runLLMBenchmark()
-                currentStep++
+                currentStep = 100
 
-                // 完成
-                updateBatchProgress("测试完成", totalSteps, totalSteps)
+                updateBatchProgress("测试完成", "完成", "结束", currentStep)
 
                 withContext(Dispatchers.Main) {
+                    binding.resourceMonitor.stopMonitoring()
                     binding.cardBatchProgress.visibility = View.GONE
+                    binding.cardBatchTest.visibility = View.VISIBLE
                     binding.btnRunAllBenchmarks.isEnabled = true
                     binding.btnExportReport.isEnabled = true
                     binding.btnClearReport.visibility = View.VISIBLE
+                    binding.btnCompareModels.visibility = View.VISIBLE
 
                     displaySummaryReport()
+                    updateModelStatuses()
 
                     Toast.makeText(
                         requireContext(),
@@ -208,8 +241,11 @@ class BenchmarkDashboardFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    binding.resourceMonitor.stopMonitoring()
                     binding.cardBatchProgress.visibility = View.GONE
+                    binding.cardBatchTest.visibility = View.VISIBLE
                     binding.btnRunAllBenchmarks.isEnabled = true
+                    updateModelStatuses()
                     Toast.makeText(requireContext(), "测试出错: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -218,7 +254,6 @@ class BenchmarkDashboardFragment : Fragment() {
 
     private suspend fun runSpeechBenchmark() {
         try {
-            // 初始化 TTS
             val initSuccess = speechBenchmark.initTTS()
             if (!initSuccess) {
                 batchResults.add(BenchmarkSummary(
@@ -233,9 +268,7 @@ class BenchmarkDashboardFragment : Fragment() {
                 return
             }
 
-            // 运行 TTS 测试
             val ttsResults = speechBenchmark.benchmarkTTS(warmupIterations = 1, testIterations = 3)
-
             for (result in ttsResults) {
                 batchResults.add(BenchmarkSummary(
                     category = "语音-TTS",
@@ -248,7 +281,6 @@ class BenchmarkDashboardFragment : Fragment() {
                 ))
             }
 
-            // 运行 VAD 测试
             val vadResults = speechBenchmark.benchmarkVAD(iterations = 50)
             for (result in vadResults) {
                 batchResults.add(BenchmarkSummary(
@@ -291,7 +323,6 @@ class BenchmarkDashboardFragment : Fragment() {
             return
         }
 
-        // 只测试第一个已下载的图像模型（避免内存问题）
         val config = downloadedModels.first()
 
         try {
@@ -312,10 +343,8 @@ class BenchmarkDashboardFragment : Fragment() {
                 return
             }
 
-            // 创建测试图像
             val testBitmap = createTestBitmap(config.inputSize.first, config.inputSize.second)
 
-            // 预热
             repeat(2) {
                 when (config.type) {
                     LocalImageModelService.ModelType.CLASSIFICATION -> imageModelService.classifyImage(testBitmap)
@@ -324,7 +353,6 @@ class BenchmarkDashboardFragment : Fragment() {
                 }
             }
 
-            // 正式测试
             val inferenceTimes = mutableListOf<Long>()
             repeat(5) {
                 val start = System.currentTimeMillis()
@@ -382,7 +410,6 @@ class BenchmarkDashboardFragment : Fragment() {
             return
         }
 
-        // 测试已加载的模型（如果有的话）
         if (llmService.isModelLoaded) {
             val result = llmBenchmarkRunner.quickBenchmark(maxTokens = 64)
 
@@ -396,7 +423,6 @@ class BenchmarkDashboardFragment : Fragment() {
                 errorMessage = result.errorMessage
             ))
         } else {
-            // 测试第一个已下载的模型
             val config = downloadedModels.first()
             val result = llmBenchmarkRunner.benchmarkModel(config, maxTokens = 64)
 
@@ -412,10 +438,15 @@ class BenchmarkDashboardFragment : Fragment() {
         }
     }
 
-    private fun updateBatchProgress(message: String, current: Int, total: Int) {
+    private fun updateBatchProgress(message: String, model: String, stage: String, progress: Int) {
         requireActivity().runOnUiThread {
             binding.tvBatchProgressStatus.text = message
-            binding.progressBatch.progress = (current * 100 / total)
+            binding.tvCurrentModel.text = "当前模型: $model"
+            binding.tvStageInfo.text = "阶段: $stage"
+            binding.progressBatch.progress = progress
+            binding.progressRing.setProgress(progress.toFloat())
+            binding.progressRing.setCenterText("$progress%")
+            binding.progressRing.setStageText(stage)
         }
     }
 
@@ -425,6 +456,8 @@ class BenchmarkDashboardFragment : Fragment() {
             appendLine("📊 AI 模型性能测试报告")
             appendLine("=" .repeat(50))
             appendLine("时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
+            appendLine("设备: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE}")
             appendLine()
 
             val grouped = batchResults.groupBy { it.category }
@@ -447,7 +480,6 @@ class BenchmarkDashboardFragment : Fragment() {
                 appendLine()
             }
 
-            // 汇总统计
             appendLine("=" .repeat(50))
             appendLine("📈 汇总统计")
             appendLine("-".repeat(40))
@@ -456,6 +488,8 @@ class BenchmarkDashboardFragment : Fragment() {
             appendLine("  成功: $successCount")
             appendLine("  失败: $failCount")
             appendLine("  总计: ${batchResults.size}")
+
+            binding.tvSuccessCount.text = "$successCount/${batchResults.size}"
 
             if (successCount > 0) {
                 val avgLatency = batchResults.filter { it.success }.map { it.latencyMs }.average()
@@ -466,6 +500,28 @@ class BenchmarkDashboardFragment : Fragment() {
         }
 
         binding.tvSummaryReport.text = report
+        showChart()
+    }
+
+    private fun showChart() {
+        val successResults = batchResults.filter { it.success }
+        if (successResults.isEmpty()) return
+
+        val modelNames = successResults.map { it.modelName.take(10) }
+        val latencyValues = successResults.map { it.latencyMs.toFloat() }
+
+        val chartData = BenchmarkChartView.BenchmarkChartData(
+            label = "模型延迟 (ms)",
+            labels = modelNames,
+            values = latencyValues
+        )
+
+        binding.chartContainer.removeAllViews()
+        val chartView = BenchmarkChartView(requireContext())
+        chartView.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 300)
+        binding.chartContainer.addView(chartView)
+        chartView.showChart(BAR, chartData)
+        binding.chartContainer.visibility = View.VISIBLE
     }
 
     private fun exportReport() {
@@ -483,16 +539,27 @@ class BenchmarkDashboardFragment : Fragment() {
         binding.tvSummaryReport.text = "运行测试后，报告将显示在这里..."
         binding.btnExportReport.isEnabled = false
         binding.btnClearReport.visibility = View.GONE
+        binding.btnCompareModels.visibility = View.GONE
+        binding.tvSuccessCount.text = "成功数"
+        binding.chartContainer.removeAllViews()
+        binding.chartContainer.visibility = View.GONE
     }
 
     private fun cancelBatchTest() {
         batchJob?.cancel()
         batchJob = null
 
+        binding.resourceMonitor.stopMonitoring()
         binding.cardBatchProgress.visibility = View.GONE
+        binding.cardBatchTest.visibility = View.VISIBLE
         binding.btnRunAllBenchmarks.isEnabled = true
+        updateModelStatuses()
 
         Toast.makeText(requireContext(), "已取消批量测试", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showCompareDialog() {
+        Toast.makeText(requireContext(), "对比分析功能开发中...", Toast.LENGTH_SHORT).show()
     }
 
     private fun createTestBitmap(width: Int, height: Int): android.graphics.Bitmap {
