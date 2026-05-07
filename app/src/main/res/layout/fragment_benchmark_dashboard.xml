@@ -33,6 +33,13 @@
             android:padding="16dp"
             android:paddingBottom="24dp">
 
+            <!-- Device Recommendation Card -->
+            <com.hiringai.mobile.ui.benchmark.DeviceRecommendationCard
+                android:id="@+id/device_recommendation_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp" />
+
             <!-- Batch Test Card -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_batch_test"
