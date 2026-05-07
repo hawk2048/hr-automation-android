@@ -1,7 +1,6 @@
 package com.hiringai.mobile.ui.benchmark
 
 import android.content.Context
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -11,12 +10,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.hiringai.mobile.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.RandomAccessFile
+import kotlinx.coroutines.*
 
 class ResourceMonitorView @JvmOverloads constructor(
     context: Context,
@@ -32,7 +26,12 @@ class ResourceMonitorView @JvmOverloads constructor(
     private lateinit var gpuText: TextView
 
     private var isRunning = false
-    private val handler = Handler(Looper.getMainLooper())
+    private var monitorJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val updateIntervalMs = 1000L
+    private var lastCpuValue = 0f
+    private var lastMemoryValue = 0f
+    private var lastGpuValue = 0f
 
     init {
         orientation = VERTICAL
@@ -47,44 +46,66 @@ class ResourceMonitorView @JvmOverloads constructor(
         cpuText = findViewById(R.id.tv_cpu_value)
         memoryText = findViewById(R.id.tv_memory_value)
         gpuText = findViewById(R.id.tv_gpu_value)
+
+        cpuProgress.max = 100
+        memoryProgress.max = 100
+        gpuProgress.max = 100
     }
 
     fun startMonitoring() {
         if (isRunning) return
         isRunning = true
-        updateResources()
+
+        monitorJob = scope.launch {
+            while (isActive && isRunning) {
+                updateResources()
+                delay(updateIntervalMs)
+            }
+        }
     }
 
     fun stopMonitoring() {
         isRunning = false
+        monitorJob?.cancel()
+        monitorJob = null
     }
 
-    private fun updateResources() {
-        if (!isRunning) return
-
-        GlobalScope.launch(Dispatchers.IO) {
+    private suspend fun updateResources() {
+        withContext(Dispatchers.IO) {
             val cpuUsage = getCPUUsage()
             val memoryUsage = getMemoryUsage()
             val gpuUsage = getGPUUsage()
 
             withContext(Dispatchers.Main) {
-                cpuProgress.progress = cpuUsage.toInt()
-                cpuText.text = "${cpuUsage.toInt()}%"
-
-                memoryProgress.progress = memoryUsage.toInt()
-                memoryText.text = "${memoryUsage.toInt()}%"
-
-                gpuProgress.progress = gpuUsage.toInt()
-                gpuText.text = "${gpuUsage.toInt()}%"
+                updateUI(cpuUsage, memoryUsage, gpuUsage)
             }
         }
+    }
 
-        handler.postDelayed({ updateResources() }, 1000)
+    private fun updateUI(cpu: Float, memory: Float, gpu: Float) {
+        if (shouldUpdate(cpu, lastCpuValue) || shouldUpdate(memory, lastMemoryValue) || shouldUpdate(gpu, lastGpuValue)) {
+            cpuProgress.progress = cpu.toInt()
+            cpuText.text = "${cpu.toInt()}%"
+
+            memoryProgress.progress = memory.toInt()
+            memoryText.text = "${memory.toInt()}%"
+
+            gpuProgress.progress = gpu.toInt()
+            gpuText.text = "${gpu.toInt()}%"
+
+            lastCpuValue = cpu
+            lastMemoryValue = memory
+            lastGpuValue = gpu
+        }
+    }
+
+    private fun shouldUpdate(newValue: Float, lastValue: Float): Boolean {
+        return kotlin.math.abs(newValue - lastValue) >= 1f
     }
 
     private fun getCPUUsage(): Float {
         return try {
-            val reader = RandomAccessFile("/proc/stat", "r")
+            val reader = java.io.RandomAccessFile("/proc/stat", "r")
             val load = reader.readLine()
             reader.close()
 
@@ -94,7 +115,7 @@ class ResourceMonitorView @JvmOverloads constructor(
 
             Thread.sleep(100)
 
-            val reader2 = RandomAccessFile("/proc/stat", "r")
+            val reader2 = java.io.RandomAccessFile("/proc/stat", "r")
             val load2 = reader2.readLine()
             reader2.close()
 
@@ -120,7 +141,7 @@ class ResourceMonitorView @JvmOverloads constructor(
 
     private fun getGPUUsage(): Float {
         return try {
-            val reader = RandomAccessFile("/sys/devices/platform/kgsl-3d0/kgsl/kgsl-3d0/gpuclk", "r")
+            val reader = java.io.RandomAccessFile("/sys/devices/platform/kgsl-3d0/kgsl/kgsl-3d0/gpuclk", "r")
             val gpuClock = reader.readLine().toInt()
             reader.close()
 
@@ -129,5 +150,11 @@ class ResourceMonitorView @JvmOverloads constructor(
         } catch (e: Exception) {
             0f
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stopMonitoring()
+        scope.cancel()
     }
 }

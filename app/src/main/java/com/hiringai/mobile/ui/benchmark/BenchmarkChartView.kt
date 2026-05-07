@@ -1,18 +1,28 @@
 package com.hiringai.mobile.ui.benchmark
 
 import android.content.Context
+import android.graphics.Color
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.FrameLayout
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.charts.RadarChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.components.YAxis
-import com.github.mikephil.charting.components.RadarAxisRenderer
-import com.github.mikephil.charting.components.RadarChart
-import com.github.mikephil.charting.data.*
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.data.PieData
+import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.PieEntry
+import com.github.mikephil.charting.data.RadarData
+import com.github.mikephil.charting.data.RadarDataSet
+import com.github.mikephil.charting.data.RadarEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.utils.ColorTemplate
 import com.hiringai.mobile.R
@@ -28,6 +38,9 @@ class BenchmarkChartView @JvmOverloads constructor(
     private lateinit var pieChart: PieChart
     private lateinit var radarChart: RadarChart
 
+    private var currentChartType: ChartType? = null
+    private var isInitialized = false
+
     enum class ChartType {
         BAR,
         LINE,
@@ -37,98 +50,154 @@ class BenchmarkChartView @JvmOverloads constructor(
 
     init {
         LayoutInflater.from(context).inflate(R.layout.layout_benchmark_chart, this, true)
+    }
+
+    private fun initCharts() {
+        if (isInitialized) return
+        isInitialized = true
+
         barChart = findViewById(R.id.bar_chart)
         lineChart = findViewById(R.id.line_chart)
         pieChart = findViewById(R.id.pie_chart)
         radarChart = findViewById(R.id.radar_chart)
+
         setupBarChart()
         setupLineChart()
         setupPieChart()
         setupRadarChart()
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        initCharts()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        clearCharts()
+    }
+
+    private fun clearCharts() {
+        barChart?.apply { clear(); invalidate() }
+        lineChart?.apply { clear(); invalidate() }
+        pieChart?.apply { clear(); invalidate() }
+        radarChart?.apply { clear(); invalidate() }
+    }
+
     private fun setupBarChart() {
-        barChart.description.isEnabled = false
-        barChart.setPinchZoom(false)
-        barChart.setDrawBarShadow(false)
-        barChart.setDrawGridBackground(false)
+        barChart.apply {
+            description.isEnabled = false
+            setPinchZoom(false)
+            setDrawBarShadow(false)
+            setDrawGridBackground(false)
+            setDrawValueAboveBar(true)
+            setFitBars(true)
+            animateY(300)
 
-        barChart.xAxis.apply {
-            position = XAxis.XAxisPosition.BOTTOM
-            setDrawGridLines(false)
-            granularity = 1f
-            textSize = 10f
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+                granularity = 1f
+                textSize = 10f
+                setDrawLabels(true)
+            }
+
+            axisLeft.apply {
+                setDrawGridLines(true)
+                granularity = 1f
+                textSize = 10f
+                axisMinimum = 0f
+            }
+
+            axisRight.isEnabled = false
+            legend.isEnabled = true
+            legend.textSize = 10f
+
+            setTouchEnabled(true)
+            isDragEnabled = true
+            setScaleEnabled(false)
         }
-
-        barChart.axisLeft.apply {
-            setDrawGridLines(true)
-            granularity = 1f
-            textSize = 10f
-        }
-
-        barChart.axisRight.isEnabled = false
-        barChart.legend.isEnabled = true
-        barChart.legend.textSize = 10f
     }
 
     private fun setupLineChart() {
-        lineChart.description.isEnabled = false
-        lineChart.setPinchZoom(true)
-        lineChart.setDrawGridBackground(false)
+        lineChart.apply {
+            description.isEnabled = false
+            setPinchZoom(true)
+            setDrawGridBackground(false)
+            animateX(300)
 
-        lineChart.xAxis.apply {
-            position = XAxis.XAxisPosition.BOTTOM
-            setDrawGridLines(false)
-            granularity = 1f
-            textSize = 10f
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+                granularity = 1f
+                textSize = 10f
+            }
+
+            axisLeft.apply {
+                setDrawGridLines(true)
+                granularity = 1f
+                textSize = 10f
+            }
+
+            axisRight.isEnabled = false
+            legend.isEnabled = true
+            legend.textSize = 10f
+
+            setTouchEnabled(true)
+            isDragEnabled = true
+            setScaleEnabled(true)
+            isDoubleTapToZoomEnabled = false
         }
-
-        lineChart.axisLeft.apply {
-            setDrawGridLines(true)
-            granularity = 1f
-            textSize = 10f
-        }
-
-        lineChart.axisRight.isEnabled = false
-        lineChart.legend.isEnabled = true
-        lineChart.legend.textSize = 10f
-        lineChart.isDoubleTapToZoomEnabled = false
     }
 
     private fun setupPieChart() {
-        pieChart.description.isEnabled = false
-        pieChart.isDrawHoleEnabled = true
-        pieChart.setHoleColor(android.graphics.Color.WHITE)
-        pieChart.setTransparentCircleRadius(50f)
-        pieChart.legend.isEnabled = true
-        pieChart.legend.textSize = 10f
+        pieChart.apply {
+            description.isEnabled = false
+            isDrawHoleEnabled = true
+            setHoleColor(Color.WHITE)
+            holeRadius = 45f
+            setTransparentCircleRadius(50f)
+            legend.isEnabled = true
+            legend.textSize = 10f
+            animateY(300)
+            setUsePercentValues(true)
+            setEntryLabelTextSize(10f)
+            setEntryLabelColor(Color.BLACK)
+        }
     }
 
     private fun setupRadarChart() {
-        radarChart.description.isEnabled = false
-        radarChart.setDrawWeb(true)
-        radarChart.setWebColor(android.graphics.Color.LTGRAY)
-        radarChart.setWebLineWidth(1f)
-        radarChart.setWebAlpha(100)
-        radarChart.legend.isEnabled = true
-        radarChart.legend.textSize = 10f
+        radarChart.apply {
+            description.isEnabled = false
+            setDrawWeb(true)
+            setWebColor(Color.LTGRAY)
+            setWebLineWidth(1f)
+            setWebAlpha(100)
+            legend.isEnabled = true
+            legend.textSize = 10f
+            animateXY(300, 300)
 
-        radarChart.yAxis.apply {
-            axisMinimum = 0f
-            axisMaximum = 100f
-            textSize = 8f
-        }
+            yAxis.apply {
+                axisMinimum = 0f
+                axisMaximum = 100f
+                textSize = 8f
+                setDrawLabels(true)
+            }
 
-        radarChart.xAxis.apply {
-            textSize = 10f
+            xAxis.apply {
+                textSize = 10f
+            }
+
+            setTouchEnabled(true)
+            isDragEnabled = true
+            setScaleEnabled(true)
         }
     }
 
     fun showChart(type: ChartType, chartData: BenchmarkChartData) {
-        barChart.visibility = GONE
-        lineChart.visibility = GONE
-        pieChart.visibility = GONE
-        radarChart.visibility = GONE
+        initCharts()
+
+        hideAllCharts()
 
         when (type) {
             ChartType.BAR -> {
@@ -148,13 +217,14 @@ class BenchmarkChartView @JvmOverloads constructor(
                 populateRadarChart(chartData)
             }
         }
+
+        currentChartType = type
     }
 
     fun showMultiDataSetChart(type: ChartType, dataSets: List<BenchmarkChartData>) {
-        barChart.visibility = GONE
-        lineChart.visibility = GONE
-        pieChart.visibility = GONE
-        radarChart.visibility = GONE
+        initCharts()
+
+        hideAllCharts()
 
         when (type) {
             ChartType.BAR -> {
@@ -174,162 +244,166 @@ class BenchmarkChartView @JvmOverloads constructor(
                 populatePieChart(dataSets.firstOrNull() ?: return)
             }
         }
+
+        currentChartType = type
+    }
+
+    private fun hideAllCharts() {
+        barChart.visibility = GONE
+        lineChart.visibility = GONE
+        pieChart.visibility = GONE
+        radarChart.visibility = GONE
     }
 
     private fun populateBarChart(chartData: BenchmarkChartData) {
-        val entries = mutableListOf<BarEntry>()
-        chartData.values.forEachIndexed { index, value ->
-            entries.add(BarEntry(index.toFloat(), value))
+        val entries = chartData.values.mapIndexed { index, value ->
+            BarEntry(index.toFloat(), value)
         }
 
         val dataSet = BarDataSet(entries, chartData.label).apply {
             colors = ColorTemplate.MATERIAL_COLORS.toList()
             valueTextSize = 10f
-            valueTextColor = android.graphics.Color.BLACK
+            valueTextColor = Color.BLACK
+            setDrawValues(true)
         }
 
-        val barData = BarData(dataSet)
-        barData.barWidth = 0.6f
-
-        barChart.xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
-        barChart.data = barData
-        barChart.invalidate()
+        barChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
+            data = BarData(dataSet).apply { barWidth = 0.6f }
+            invalidate()
+        }
     }
 
     private fun populateMultiBarChart(dataSets: List<BenchmarkChartData>) {
-        val barDataSets = mutableListOf<BarDataSet>()
-        dataSets.forEachIndexed { dataSetIndex, chartData ->
-            val entries = mutableListOf<BarEntry>()
-            chartData.values.forEachIndexed { index, value ->
-                entries.add(BarEntry(index.toFloat(), value))
+        val barDataSets = dataSets.mapIndexed { dataSetIndex, chartData ->
+            val entries = chartData.values.mapIndexed { index, value ->
+                BarEntry(index.toFloat(), value)
             }
 
-            val dataSet = BarDataSet(entries, chartData.label).apply {
+            BarDataSet(entries, chartData.label).apply {
                 color = ColorTemplate.MATERIAL_COLORS[dataSetIndex % ColorTemplate.MATERIAL_COLORS.size]
                 valueTextSize = 8f
-                valueTextColor = android.graphics.Color.BLACK
+                valueTextColor = Color.BLACK
             }
-            barDataSets.add(dataSet)
         }
 
-        val barData = BarData(barDataSets)
-        barData.barWidth = 0.3f
-
-        barChart.xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
-        barChart.groupBars(0f, 0.4f, 0.08f)
-        barChart.data = barData
-        barChart.invalidate()
+        barChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
+            data = BarData(barDataSets.toList()).apply { barWidth = 0.3f }
+            groupBars(0f, 0.4f, 0.08f)
+            invalidate()
+        }
     }
 
     private fun populateLineChart(chartData: BenchmarkChartData) {
-        val entries = mutableListOf<Entry>()
-        chartData.values.forEachIndexed { index, value ->
-            entries.add(Entry(index.toFloat(), value))
+        val entries = chartData.values.mapIndexed { index, value ->
+            Entry(index.toFloat(), value)
         }
 
         val dataSet = LineDataSet(entries, chartData.label).apply {
-            color = android.graphics.Color.BLUE
+            color = Color.BLUE
             valueTextSize = 10f
-            valueTextColor = android.graphics.Color.BLACK
+            valueTextColor = Color.BLACK
             lineWidth = 2f
             circleRadius = 4f
             setDrawCircleHole(false)
+            setDrawFilled(false)
         }
 
-        val lineData = LineData(dataSet)
-
-        lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
-        lineChart.data = lineData
-        lineChart.invalidate()
+        lineChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
+            data = LineData(dataSet)
+            invalidate()
+        }
     }
 
     private fun populateMultiLineChart(dataSets: List<BenchmarkChartData>) {
-        val lineDataSets = mutableListOf<LineDataSet>()
-        dataSets.forEachIndexed { dataSetIndex, chartData ->
-            val entries = mutableListOf<Entry>()
-            chartData.values.forEachIndexed { index, value ->
-                entries.add(Entry(index.toFloat(), value))
+        val lineDataSets = dataSets.mapIndexed { dataSetIndex, chartData ->
+            val entries = chartData.values.mapIndexed { index, value ->
+                Entry(index.toFloat(), value)
             }
 
-            val dataSet = LineDataSet(entries, chartData.label).apply {
+            LineDataSet(entries, chartData.label).apply {
                 color = ColorTemplate.MATERIAL_COLORS[dataSetIndex % ColorTemplate.MATERIAL_COLORS.size]
                 valueTextSize = 8f
-                valueTextColor = android.graphics.Color.BLACK
+                valueTextColor = Color.BLACK
                 lineWidth = 2f
                 circleRadius = 3f
                 setDrawCircleHole(false)
             }
-            lineDataSets.add(dataSet)
         }
 
-        val lineData = LineData(lineDataSets)
-
-        lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
-        lineChart.data = lineData
-        lineChart.invalidate()
+        lineChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
+            data = LineData(lineDataSets.toList())
+            invalidate()
+        }
     }
 
     private fun populatePieChart(chartData: BenchmarkChartData) {
-        val entries = mutableListOf<PieEntry>()
-        chartData.values.forEachIndexed { index, value ->
-            entries.add(PieEntry(value, chartData.labels.getOrNull(index) ?: "Item $index"))
+        val entries = chartData.values.mapIndexed { index, value ->
+            PieEntry(value, chartData.labels.getOrNull(index) ?: "Item $index")
         }
 
         val dataSet = PieDataSet(entries, chartData.label).apply {
             colors = ColorTemplate.MATERIAL_COLORS.toList()
             valueTextSize = 10f
-            valueTextColor = android.graphics.Color.BLACK
+            valueTextColor = Color.BLACK
+            sliceSpace = 2f
+            valueLinePart1OffsetPercentage = 80f
+            valueLinePart1Length = 0.4f
+            valueLinePart2Length = 0.4f
         }
 
-        val pieData = PieData(dataSet)
-        pieChart.data = pieData
-        pieChart.invalidate()
+        pieChart.apply {
+            data = PieData(dataSet)
+            invalidate()
+        }
     }
 
     private fun populateRadarChart(chartData: BenchmarkChartData) {
-        val entries = mutableListOf<RadarEntry>()
-        chartData.values.forEach { value ->
-            entries.add(RadarEntry(value))
+        val entries = chartData.values.map { value ->
+            RadarEntry(value)
         }
 
         val dataSet = RadarDataSet(entries, chartData.label).apply {
-            color = android.graphics.Color.BLUE
-            fillColor = android.graphics.Color.BLUE
+            color = Color.BLUE
+            fillColor = Color.BLUE
             fillAlpha = 50
             lineWidth = 2f
             valueTextSize = 8f
-            valueTextColor = android.graphics.Color.BLACK
+            valueTextColor = Color.BLACK
+            setDrawValues(true)
         }
 
-        val radarData = RadarData(dataSet)
-        radarChart.data = radarData
-        radarChart.xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
-        radarChart.invalidate()
+        radarChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(chartData.labels)
+            data = RadarData(dataSet)
+            invalidate()
+        }
     }
 
     private fun populateMultiRadarChart(dataSets: List<BenchmarkChartData>) {
-        val radarDataSets = mutableListOf<RadarDataSet>()
-        dataSets.forEachIndexed { dataSetIndex, chartData ->
-            val entries = mutableListOf<RadarEntry>()
-            chartData.values.forEach { value ->
-                entries.add(RadarEntry(value))
+        val radarDataSets = dataSets.mapIndexed { dataSetIndex, chartData ->
+            val entries = chartData.values.map { value ->
+                RadarEntry(value)
             }
 
-            val dataSet = RadarDataSet(entries, chartData.label).apply {
+            RadarDataSet(entries, chartData.label).apply {
                 color = ColorTemplate.MATERIAL_COLORS[dataSetIndex % ColorTemplate.MATERIAL_COLORS.size]
                 fillColor = ColorTemplate.MATERIAL_COLORS[dataSetIndex % ColorTemplate.MATERIAL_COLORS.size]
                 fillAlpha = 30
                 lineWidth = 2f
                 valueTextSize = 8f
-                valueTextColor = android.graphics.Color.BLACK
+                valueTextColor = Color.BLACK
             }
-            radarDataSets.add(dataSet)
         }
 
-        val radarData = RadarData(radarDataSets)
-        radarChart.xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
-        radarChart.data = radarData
-        radarChart.invalidate()
+        radarChart.apply {
+            xAxis.valueFormatter = IndexAxisValueFormatter(dataSets.firstOrNull()?.labels ?: emptyList())
+            data = RadarData(radarDataSets.toList())
+            invalidate()
+        }
     }
 
     data class BenchmarkChartData(
